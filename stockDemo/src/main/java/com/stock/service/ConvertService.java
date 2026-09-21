@@ -4,8 +4,6 @@ package com.stock.service;
 import com.stock.dto.dtoResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.client.RestClient;
 
 @Service
