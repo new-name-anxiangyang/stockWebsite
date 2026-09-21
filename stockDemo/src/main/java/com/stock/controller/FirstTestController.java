@@ -1,7 +1,9 @@
 package com.stock.controller;
 
 
+import com.stock.dto.dtoResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -33,17 +35,18 @@ public class FirstTestController {
 
     /**
      * 拼接url地址
+     *
      * @param symbols
      * @return
      */
     @GetMapping("/{symbols}")
-    public String stockTest(@PathVariable String symbols){
+    public  dtoResponse stockTest(@PathVariable String symbols){
         return restClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/eod")
                         .queryParam("access_key",accessApiKey)
                         .queryParam("symbols",symbols)
                         .build())
-                .retrieve().body(String.class);
+                .retrieve().body(dtoResponse.class);
     }
 }
