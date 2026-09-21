@@ -25,6 +25,7 @@ public class FirstTestController {
 
     @GetMapping("/{symbols}")
     public dtoResponse convertControler(@PathVariable String symbols){
-        return convertService.stockService(symbols);
+        log.info("转换服务 + {} + 已启动" ,symbols);
+        return convertService.getAndSaveStock(symbols);
     }
 }

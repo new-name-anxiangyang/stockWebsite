@@ -33,10 +33,11 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 public class stockDto {
+            BigDecimal open;
             BigDecimal high;
             BigDecimal low;
             BigDecimal close;
-            BigDecimal volume;
+            Long volume;
             BigDecimal adj_high;
             BigDecimal adj_low;
             BigDecimal adj_close;
