@@ -5,7 +5,6 @@ import com.stock.Repository.StockDbOperateRespority;
 import com.stock.dto.dtoResponse;
 import com.stock.dto.stockDto;
 import com.stock.stockDB.StockDailyPrice;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
@@ -83,5 +82,9 @@ public class ConvertService {
                 data.getExchange(),
                 data.getDate()
         );
+    }
+
+    public List<StockDailyPrice> selectDB(String symbol) {
+        return respority.findBySymbol(symbol);
     }
 }

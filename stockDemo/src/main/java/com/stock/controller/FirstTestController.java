@@ -3,12 +3,12 @@ package com.stock.controller;
 
 import com.stock.dto.dtoResponse;
 import com.stock.service.ConvertService;
+import com.stock.stockDB.StockDailyPrice;
 import lombok.extern.slf4j.Slf4j;
-import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.client.RestClient;
+
+import java.util.List;
 
 @RestController
 @Slf4j
@@ -27,5 +27,11 @@ public class FirstTestController {
     public dtoResponse convertControler(@PathVariable String symbols){
         log.info("转换服务 + {} + 已启动" ,symbols);
         return convertService.getAndSaveStock(symbols);
+    }
+
+    @GetMapping("/db/{symbol}")
+    public List<StockDailyPrice> stlectDBControler(@PathVariable String symbol){
+        log.info("转换服务 + {} + 已启动" ,symbol);
+        return convertService.selectDB(symbol);
     }
 }
