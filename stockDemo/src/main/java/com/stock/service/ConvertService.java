@@ -66,9 +66,16 @@ public class ConvertService {
                 .retrieve().body(dtoResponse.class);
         List<StockDailyPrice> prices = response.data()
                 .stream()
+                .filter(data -> !respority.existsBySymbolAndTradeDate(
+                        data.getSymbol(),
+                        data.getDate()
+                ))
                 .map(this::convertToEntity)
                 .toList();
-        respority.saveAll(prices);
+        if(!prices.isEmpty()){
+            respority.saveAll(prices);
+        }
+
         return response;
     }
     private StockDailyPrice convertToEntity(stockDto data) {

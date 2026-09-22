@@ -9,4 +9,6 @@ import java.util.List;
 public interface StockDbOperateRespority extends JpaRepository<StockDailyPrice, Long> {
 
     List<StockDailyPrice> findBySymbol(String symbol);
+
+    boolean existsBySymbolAndTradeDate(String symbol, String tradedate);
 }
