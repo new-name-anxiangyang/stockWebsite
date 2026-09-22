@@ -75,7 +75,6 @@ public class ConvertService {
         if(!prices.isEmpty()){
             respority.saveAll(prices);
         }
-
         return response;
     }
     private StockDailyPrice convertToEntity(stockDto data) {
@@ -93,5 +92,14 @@ public class ConvertService {
 
     public List<StockDailyPrice> selectDB(String symbol) {
         return respority.findBySymbol(symbol);
+    }
+
+    /**
+     * 查询历史数据
+     * @param symbol
+     * @return
+     */
+    public List<StockDailyPrice> selectHistoryData(String symbol) {
+        return respority.findBySymbolOrderByTradeDateDesc(symbol);
     }
 }

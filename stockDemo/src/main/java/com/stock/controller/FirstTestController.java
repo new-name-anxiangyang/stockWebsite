@@ -34,4 +34,10 @@ public class FirstTestController {
         log.info("转换服务 + {} + 已启动" ,symbol);
         return convertService.selectDB(symbol);
     }
+
+    @GetMapping("/history/{symbol}")
+    public List<StockDailyPrice> SelectHistoryData(@PathVariable String symbol){
+        log.info("查询历史数据 + {}",symbol);
+        return convertService.selectHistoryData(symbol);
+    }
 }
