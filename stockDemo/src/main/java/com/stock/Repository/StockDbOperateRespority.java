@@ -1,7 +1,7 @@
 package com.stock.Repository;
 
 
-import com.stock.stockDB.StockDailyPrice;
+import com.stock.Entity.StockDailyPrice;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;

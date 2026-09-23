@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>股票查询</title>
+</head>
+<body>
+
+<h1>股票查询</h1>
+
+<input id="symbolInput" type="text" value="AAPL">
+<button onclick="searchStock()">查询</button>
+
+<pre id="result"></pre>
+
+<script>
+    async function searchStock() {
+        const symbol = document
+            .getElementById("symbolInput")
+            .value
+            .trim();
+
+        if (!symbol) {
+            alert("请输入股票代码");
+            return;
+        }
+
+        const response = await fetch(`/stocks/${symbol}`);
+        const data = await response.json();
+
+        document.getElementById("result").textContent =
+            JSON.stringify(data, null, 2);
+    }
+</script>
+
+</body>
+</html>

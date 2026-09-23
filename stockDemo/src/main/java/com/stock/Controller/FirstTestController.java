@@ -1,9 +1,10 @@
-package com.stock.controller;
+package com.stock.Controller;
 
 
-import com.stock.dto.dtoResponse;
-import com.stock.service.ConvertService;
-import com.stock.stockDB.StockDailyPrice;
+import com.stock.Vo.dtoResponseVo;
+import com.stock.Vo.stockHistoryResponseVo;
+import com.stock.Service.ConvertService;
+import com.stock.Entity.StockDailyPrice;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -25,7 +26,7 @@ public class FirstTestController {
      private ConvertService convertService;
 
     @GetMapping("/{symbols}")
-    public dtoResponse convertControler(@PathVariable String symbols){
+    public dtoResponseVo convertControler(@PathVariable String symbols){
         log.info("转换服务 + {} + 已启动" ,symbols);
         return convertService.getAndSaveStock(symbols);
     }
@@ -37,7 +38,7 @@ public class FirstTestController {
     }
 
     @GetMapping("/history/{symbol}")
-    public Page<StockDailyPrice> getStockHistory(
+    public Page<stockHistoryResponseVo> getStockHistory(
             @PathVariable String symbol,
             @RequestParam String start,
             @RequestParam String end,

@@ -1,10 +1,11 @@
-package com.stock.service;
+package com.stock.Service;
 
 
 import com.stock.Repository.StockDbOperateRespority;
-import com.stock.dto.dtoResponse;
-import com.stock.dto.stockDto;
-import com.stock.stockDB.StockDailyPrice;
+import com.stock.Vo.dtoResponseVo;
+import com.stock.Dto.stockDto;
+import com.stock.Vo.stockHistoryResponseVo;
+import com.stock.Entity.StockDailyPrice;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -43,14 +44,14 @@ public class ConvertService {
      * @param symbols
      * @return
      */
-//    public dtoResponse stockService(String symbols){
+//    public dtoResponseVo stockService(String symbols){
 //        return restClient.get()
 //                .uri(uriBuilder -> uriBuilder
 //                        .path("/eod")
 //                        .queryParam("access_key",accessApiKey)
 //                        .queryParam("symbols",symbols)
 //                        .build())
-//                .retrieve().body(dtoResponse.class);
+//                .retrieve().body(dtoResponseVo.class);
 //    }
 
     /**
@@ -58,14 +59,14 @@ public class ConvertService {
      * @param symbols
      * @return
      */
-    public dtoResponse getAndSaveStock(String symbols){
-        dtoResponse response = restClient.get()
+    public dtoResponseVo getAndSaveStock(String symbols){
+        dtoResponseVo response = restClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/eod")
                         .queryParam("access_key",accessApiKey)
                         .queryParam("symbols",symbols)
                         .build())
-                .retrieve().body(dtoResponse.class);
+                .retrieve().body(dtoResponseVo.class);
         List<StockDailyPrice> prices = response.data()
                 .stream()
                 .filter(data -> !respority.existsBySymbolAndTradeDate(
@@ -98,12 +99,27 @@ public class ConvertService {
 
     /**
      * 查询历史数据
+     *
      * @param symbol
      * @return
      */
-    public Page<StockDailyPrice> findStockHistory(String symbol, String startDate, String endDate, int page, int size) {
+    public Page<stockHistoryResponseVo> findStockHistory(String symbol, String startDate, String endDate, int page, int size) {
         PageRequest request = PageRequest.of(page, size);
-        return respority
+        Page<StockDailyPrice> stockPage = respority
                 .findBySymbolAndTradeDateBetweenOrderByTradeDateAsc(symbol, startDate, endDate, request);
+        return stockPage.map(this::convertToResponse);
+    }
+    private stockHistoryResponseVo convertToResponse(
+            StockDailyPrice price) {
+        return new stockHistoryResponseVo(
+                price.getSymbol(),
+                price.getOpenPrice(),
+                price.getHighPrice(),
+                price.getLowPrice(),
+                price.getClosePrice(),
+                price.getVolume(),
+                price.getExchange(),
+                price.getTradeDate()
+        );
     }
 }

@@ -1,4 +1,4 @@
-package com.stock.stockDB;
+package com.stock.Entity;
 
 import jakarta.persistence.*;
 
