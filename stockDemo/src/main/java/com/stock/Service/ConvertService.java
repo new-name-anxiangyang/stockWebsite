@@ -23,7 +23,7 @@ public class ConvertService {
     /**
      * 注入jpa接口
      */
-    private final StockDbOperateRespority respority;
+    private final StockDbOperateRespority repository;
     @Value("${marketstack.api}")
     private String accessApiKey;
     /**
@@ -34,7 +34,7 @@ public class ConvertService {
     public ConvertService(@Value("${marketstack.base-url}")
                                String baseUrl, StockDbOperateRespority respority) {
         this.restClient = RestClient.create(baseUrl);
-        this.respority = respority;
+        this.repository = respority;
     }
     /**
      * 拼接url地址
@@ -69,14 +69,14 @@ public class ConvertService {
     }
     public List<stockHistoryResponseVo> getAndSaveStock(String symbols){
             List<StockDailyPrice> savedData =
-                    respority.findBySymbolOrderByTradeDateAsc(symbols);
+                    repository.findBySymbolOrderByTradeDateAsc(symbols);
 
             if (savedData.isEmpty()) {
                 dtoResponseVo response =
                         fetchFromMarketstack(symbols);
                 saveNewData(response);
                 savedData =
-                        respority.findBySymbolOrderByTradeDateAsc(symbols);
+                        repository.findBySymbolOrderByTradeDateAsc(symbols);
             }
             return savedData.stream()
                     .map(this::convertToResponse)
@@ -98,33 +98,33 @@ public class ConvertService {
                 data.getDate()
         );
     }
-    private void saveStockFromApi(String symbols) {
-        dtoResponseVo response = restClient.get()
-                .uri(uriBuilder -> uriBuilder
-                        .path("/eod")
-                        .queryParam("access_key", accessApiKey)
-                        .queryParam("symbols", symbols)
-                        .build())
-                .retrieve().body(dtoResponseVo.class);
-        List<StockDailyPrice> prices = response.data()
-                .stream()
-                .filter(data -> !respority.existsBySymbolAndTradeDate(
-                        data.getSymbol(),
-                        data.getDate()
-                ))
-                .map(this::convertToEntity)
-                .toList();
-        if (!prices.isEmpty()) {
-            respority.saveAll(prices);
-        }
-    }
+//    private void saveStockFromApi(String symbols) {
+//        dtoResponseVo response = restClient.get()
+//                .uri(uriBuilder -> uriBuilder
+//                        .path("/eod")
+//                        .queryParam("access_key", accessApiKey)
+//                        .queryParam("symbols", symbols)
+//                        .build())
+//                .retrieve().body(dtoResponseVo.class);
+//        List<StockDailyPrice> prices = response.data()
+//                .stream()
+//                .filter(data -> !respority.existsBySymbolAndTradeDate(
+//                        data.getSymbol(),
+//                        data.getDate()
+//                ))
+//                .map(this::convertToEntity)
+//                .toList();
+//        if (!prices.isEmpty()) {
+//            respority.saveAll(prices);
+//        }
+//    }
     /**
      * 从数据库中查询参数对应的数据
      * @param symbol
      * @return
      */
     public List<StockDailyPrice> selectDB(String symbol) {
-        return respority.findBySymbol(symbol);
+        return repository.findBySymbol(symbol);
     }
     /**
      * 查询历史数据
@@ -134,7 +134,7 @@ public class ConvertService {
      */
     public Page<stockHistoryResponseVo> findStockHistory(String symbol, int page, int size) {
         PageRequest request = PageRequest.of(page, size);
-        Page<StockDailyPrice> stockPage = respority
+        Page<StockDailyPrice> stockPage = repository
                 .findBySymbolOrderByTradeDateAsc(symbol,request);
         return stockPage.map(this::convertToResponse);
     }
@@ -156,12 +156,12 @@ public class ConvertService {
      * 统一保存逻辑
      * @param response
      */
-    public void saveNewData(dtoResponseVo response){
+    private void saveNewData(dtoResponseVo response){
         List<StockDailyPrice> newPrices =
                 response.data()
                         .stream()
                         .filter(data ->
-                                !respority.existsBySymbolAndTradeDate(
+                                !repository.existsBySymbolAndTradeDate(
                                         data.getSymbol(),
                                         data.getDate()
                                 )
@@ -170,7 +170,7 @@ public class ConvertService {
                         .toList();
 
         if (!newPrices.isEmpty()) {
-            respority.saveAll(newPrices);
+            repository.saveAll(newPrices);
         }
 
     }
@@ -183,7 +183,7 @@ public class ConvertService {
     public List<stockHistoryResponseVo> refreshStock(String symbols){
         dtoResponseVo dtoResponseVo = fetchFromMarketstack(symbols);
         saveNewData(dtoResponseVo);
-        List<StockDailyPrice> dateAsc = respority.findBySymbolOrderByTradeDateAsc(symbols);
+        List<StockDailyPrice> dateAsc = repository.findBySymbolOrderByTradeDateAsc(symbols);
         return dateAsc.stream().map(this::convertToResponse).toList();
     }
 }

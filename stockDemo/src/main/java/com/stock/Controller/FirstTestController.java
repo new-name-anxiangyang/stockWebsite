@@ -19,8 +19,16 @@ public class FirstTestController {
     public String Test(){
         return "service is running!";
     }
-    @Autowired
-     private ConvertService convertService;
+
+     private final ConvertService convertService;
+
+    /**
+     * 自动注入service
+     * @param convertService
+     */
+    public FirstTestController(ConvertService convertService){
+        this.convertService = convertService;
+    }
 
     @GetMapping("/{symbols}")
     public List<stockHistoryResponseVo> convertControler(@PathVariable String symbols){
