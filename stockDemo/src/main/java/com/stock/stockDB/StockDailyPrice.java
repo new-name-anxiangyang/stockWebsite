@@ -5,13 +5,26 @@ import jakarta.persistence.*;
 import java.math.BigDecimal;
 
 @Entity
-@Table(name = "stock_daily_price")
+@Table(
+        name = "stock_daily_price",
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_symbol_trade_date",
+                        columnNames = {
+                                "symbol",
+                                "trade_date"
+                        }
+                )
+        }
+)
 public class StockDailyPrice {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    @Column(nullable = false, length = 20)
+    @Column(name = "symbol", nullable = false)
     private String symbol;
+    @Column(name = "trade_date", nullable = false)
+    private String tradeDate;
     private BigDecimal openPrice;
     private BigDecimal highPrice;
     private BigDecimal lowPrice;
@@ -19,8 +32,6 @@ public class StockDailyPrice {
     private Long volume;
     @Column(length = 50)
     private String exchange;
-    @Column(nullable = false, length = 50)
-    private String tradeDate;
 
     protected StockDailyPrice() {
     }

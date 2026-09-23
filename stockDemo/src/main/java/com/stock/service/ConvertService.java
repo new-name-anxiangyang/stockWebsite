@@ -6,6 +6,8 @@ import com.stock.dto.dtoResponse;
 import com.stock.dto.stockDto;
 import com.stock.stockDB.StockDailyPrice;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
@@ -99,7 +101,9 @@ public class ConvertService {
      * @param symbol
      * @return
      */
-    public List<StockDailyPrice> selectHistoryData(String symbol) {
-        return respority.findBySymbolOrderByTradeDateDesc(symbol);
+    public Page<StockDailyPrice> findStockHistory(String symbol, String startDate, String endDate, int page, int size) {
+        PageRequest request = PageRequest.of(page, size);
+        return respority
+                .findBySymbolAndTradeDateBetweenOrderByTradeDateAsc(symbol, startDate, endDate, request);
     }
 }

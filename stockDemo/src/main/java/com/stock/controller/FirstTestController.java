@@ -6,6 +6,7 @@ import com.stock.service.ConvertService;
 import com.stock.stockDB.StockDailyPrice;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -36,8 +37,13 @@ public class FirstTestController {
     }
 
     @GetMapping("/history/{symbol}")
-    public List<StockDailyPrice> SelectHistoryData(@PathVariable String symbol){
-        log.info("查询历史数据 + {}",symbol);
-        return convertService.selectHistoryData(symbol);
+    public Page<StockDailyPrice> getStockHistory(
+            @PathVariable String symbol,
+            @RequestParam String start,
+            @RequestParam String end,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        return convertService.findStockHistory(symbol, start, end,page,size);
     }
 }
