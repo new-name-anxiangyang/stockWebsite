@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.client.RestClientResponseException;
 
 @RestControllerAdvice
-public class GlobalExceptionHandler {
+public class GlobalExceptionHandler extends RuntimeException {
 
     @ExceptionHandler(RestClientResponseException.class)
     public ResponseEntity<ApiError> handleMarketError(RestClientResponseException restClientException) {
