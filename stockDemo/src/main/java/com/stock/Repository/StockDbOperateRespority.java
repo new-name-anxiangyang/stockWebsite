@@ -24,9 +24,9 @@ public interface StockDbOperateRespority extends JpaRepository<StockDailyPrice, 
     boolean existsBySymbolAndTradeDate(String symbol, String tradedate);
 
     Page<StockDailyPrice>
-    findBySymbolAndTradeDateBetweenOrderByTradeDateAsc(
+    findBySymbolOrderByTradeDateAsc(
             String symbol,
-            String startDate,
-            String endDate,
             Pageable pageable);
+
+    List<StockDailyPrice> findBySymbolOrderByTradeDateAsc(String symbols);
 }

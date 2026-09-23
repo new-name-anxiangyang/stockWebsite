@@ -2,36 +2,418 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>股票查询</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>股票行情查询</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 30px;
+            background: #f5f6fa;
+            font-family: Arial, sans-serif;
+            color: #222;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+        }
+
+        .search-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        #symbolInput {
+            width: 220px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 16px;
+            text-transform: uppercase;
+        }
+
+        button {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 4px;
+            background: #1677ff;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #0958d9;
+        }
+
+        #result {
+            margin-bottom: 15px;
+            color: #666;
+        }
+
+        .chart-box,
+        .table-box {
+            padding: 20px;
+            margin-bottom: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        }
+
+        #klineChart {
+            width: 100%;
+            height: 500px;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: center;
+        }
+
+        th,
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            white-space: nowrap;
+        }
+
+        th {
+            background: #fafafa;
+        }
+
+        tr:hover {
+            background: #f5f5f5;
+        }
+
+        .up {
+            color: #e53935;
+        }
+
+        .down {
+            color: #16a34a;
+        }
+    </style>
 </head>
+
 <body>
+<div class="container">
 
-<h1>股票查询</h1>
+    <h1>股票行情查询</h1>
 
-<input id="symbolInput" type="text" value="AAPL">
-<button onclick="searchStock()">查询</button>
+    <div class="search-box">
+        <input
+                id="symbolInput"
+                type="text"
+                value="AAPL"
+                placeholder="请输入股票代码"
+        >
+        <button onclick="refreshStock()">
+            刷新行情
+        </button>
+        <button onclick="searchStock()">
+            查询
+        </button>
+    </div>
 
-<pre id="result"></pre>
+    <div id="result">
+        请输入股票代码后查询
+    </div>
+
+    <div class="chart-box">
+        <div id="klineChart"></div>
+    </div>
+
+    <div class="table-box">
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                <tr>
+                    <th>日期</th>
+                    <th>股票代码</th>
+                    <th>开盘价</th>
+                    <th>最高价</th>
+                    <th>最低价</th>
+                    <th>收盘价</th>
+                    <th>成交量</th>
+                </tr>
+                </thead>
+
+                <tbody id="stockTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
 
 <script>
     async function searchStock() {
-        const symbol = document
-            .getElementById("symbolInput")
-            .value
-            .trim();
+        const input = document.getElementById("symbolInput");
+        const result = document.getElementById("result");
+        const tableBody = document.getElementById("stockTableBody");
+
+        const symbol = input.value.trim().toUpperCase();
 
         if (!symbol) {
-            alert("请输入股票代码");
+            result.textContent = "请输入股票代码";
             return;
         }
 
-        const response = await fetch(`/stocks/${symbol}`);
-        const data = await response.json();
+        try {
+            result.textContent = "正在查询...";
+            tableBody.innerHTML = "";
 
-        document.getElementById("result").textContent =
-            JSON.stringify(data, null, 2);
+            const response = await fetch(`/api/stocks/${symbol}`);
+
+            if (!response.ok) {
+                throw new Error(`请求失败，状态码：${response.status}`);
+            }
+
+            const stockData = await response.json();
+
+            if (stockData.length === 0) {
+                result.textContent = "没有查询到股票数据";
+                clearChart();
+                return;
+            }
+
+            renderTable(stockData);
+            renderKline(stockData);
+
+            result.textContent =
+                `查询成功：${symbol}，共 ${stockData.length} 条数据`;
+
+        } catch (error) {
+            result.textContent = `查询失败：${error.message}`;
+            tableBody.innerHTML = "";
+            clearChart();
+        }
     }
-</script>
 
+    function renderTable(data) {
+        const tableBody = document.getElementById("stockTableBody");
+
+        tableBody.innerHTML = "";
+
+        data.forEach(stock => {
+            const row = document.createElement("tr");
+
+            const open = Number(stock.openPrice || 0);
+            const close = Number(stock.closePrice || 0);
+
+            let closeClass = "";
+
+            if (close > open) {
+                closeClass = "up";
+            } else if (close < open) {
+                closeClass = "down";
+            }
+
+            row.innerHTML = `
+                <td>${formatDate(stock.tradeDate)}</td>
+                <td>${stock.symbol || ""}</td>
+                <td>${formatNumber(stock.openPrice)}</td>
+                <td>${formatNumber(stock.highPrice)}</td>
+                <td>${formatNumber(stock.lowPrice)}</td>
+                <td class="${closeClass}">
+                    ${formatNumber(stock.closePrice)}
+                </td>
+                <td>${formatNumber(stock.volume)}</td>
+            `;
+
+            tableBody.appendChild(row);
+        });
+    }
+
+    function renderKline(data) {
+        const chartElement = document.getElementById("klineChart");
+        const chart = echarts.init(chartElement);
+
+        const sortedData = [...data].sort(
+            (a, b) => new Date(a.tradeDate) - new Date(b.tradeDate)
+        );
+
+        const dates = sortedData.map(item =>
+            formatDate(item.tradeDate)
+        );
+
+        const values = sortedData.map(item => [
+            Number(item.openPrice || 0),
+            Number(item.closePrice || 0),
+            Number(item.lowPrice || 0),
+            Number(item.highPrice || 0)
+        ]);
+
+        chart.setOption({
+            animation: true,
+
+            title: {
+                text: "股票 K 线图",
+                left: "center"
+            },
+
+            tooltip: {
+                trigger: "axis",
+                axisPointer: {
+                    type: "cross"
+                }
+            },
+
+            grid: {
+                left: "8%",
+                right: "5%",
+                top: "15%",
+                bottom: "15%"
+            },
+
+            xAxis: {
+                type: "category",
+                data: dates,
+                boundaryGap: true
+            },
+
+            yAxis: {
+                type: "value",
+                scale: true,
+                splitArea: {
+                    show: true
+                }
+            },
+
+            dataZoom: [
+                {
+                    type: "inside",
+                    start: 0,
+                    end: 100
+                },
+                {
+                    type: "slider",
+                    start: 0,
+                    end: 100
+                }
+            ],
+
+            series: [
+                {
+                    name: "行情",
+                    type: "candlestick",
+                    data: values,
+                    itemStyle: {
+                        color: "#ef4444",
+                        color0: "#16a34a",
+                        borderColor: "#ef4444",
+                        borderColor0: "#16a34a"
+                    }
+                }
+            ]
+        });
+
+        window.addEventListener("resize", () => {
+            chart.resize();
+        });
+    }
+
+    function clearChart() {
+        const chartElement = document.getElementById("klineChart");
+        const chart = echarts.getInstanceByDom(chartElement);
+
+        if (chart) {
+            chart.clear();
+        }
+    }
+
+    function formatDate(date) {
+        if (!date) {
+            return "";
+        }
+
+        return date.substring(0, 10);
+    }
+
+    function formatNumber(value) {
+        if (value === null || value === undefined) {
+            return "";
+        }
+
+        const number = Number(value);
+
+        if (Number.isNaN(number)) {
+            return value;
+        }
+
+        return number.toLocaleString("en-US", {
+            maximumFractionDigits: 4
+        });
+    }
+
+    async function refreshStock() {
+        const symbol = document
+            .getElementById("symbolInput")
+            .value
+            .trim()
+            .toUpperCase();
+
+        const result = document.getElementById("result");
+
+        if (!symbol) {
+            result.textContent = "请输入股票代码";
+            return;
+        }
+
+        try {
+            result.textContent = "正在刷新行情...";
+
+            const response = await fetch(
+                `/api/stocks/${symbol}/refresh`,
+                {
+                    method: "POST"
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error(
+                    `刷新失败，状态码：${response.status}`
+                );
+            }
+
+            const stockData = await response.json();
+
+            renderTable(stockData);
+            renderKline(stockData);
+
+            result.textContent =
+                `刷新成功：${symbol}，共 ${stockData.length} 条数据`;
+
+        } catch (error) {
+            result.textContent =
+                `刷新失败：${error.message}`;
+        }
+    }
+
+    document
+        .getElementById("symbolInput")
+        .addEventListener("keydown", event => {
+            if (event.key === "Enter") {
+                searchStock();
+            }
+        });
+</script>
 </body>
 </html>
+```

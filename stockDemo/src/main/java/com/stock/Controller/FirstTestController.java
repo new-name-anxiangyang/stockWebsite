@@ -1,7 +1,4 @@
 package com.stock.Controller;
-
-
-import com.stock.Vo.dtoResponseVo;
 import com.stock.Vo.stockHistoryResponseVo;
 import com.stock.Service.ConvertService;
 import com.stock.Entity.StockDailyPrice;
@@ -26,7 +23,7 @@ public class FirstTestController {
      private ConvertService convertService;
 
     @GetMapping("/{symbols}")
-    public dtoResponseVo convertControler(@PathVariable String symbols){
+    public List<stockHistoryResponseVo> convertControler(@PathVariable String symbols){
         log.info("转换服务 + {} + 已启动" ,symbols);
         return convertService.getAndSaveStock(symbols);
     }
@@ -40,11 +37,13 @@ public class FirstTestController {
     @GetMapping("/history/{symbol}")
     public Page<stockHistoryResponseVo> getStockHistory(
             @PathVariable String symbol,
-            @RequestParam String start,
-            @RequestParam String end,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
+        return convertService.findStockHistory(symbol,page,size);
+    }
 
-        return convertService.findStockHistory(symbol, start, end,page,size);
+    @PostMapping("/{symbol}/refresh")
+    public List<stockHistoryResponseVo> refreshStock(@PathVariable String symbol){
+        return convertService.refreshStock(symbol);
     }
 }
