@@ -1,13 +1,15 @@
 package com.stock.Exception;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.client.RestClientResponseException;
 
+@Slf4j
 @RestControllerAdvice
-public class GlobalExceptionHandler extends RuntimeException {
+public class GlobalExceptionHandler {
 
     @ExceptionHandler(RestClientResponseException.class)
     public ResponseEntity<ApiError> handleMarketError(RestClientResponseException restClientException) {
@@ -20,6 +22,7 @@ public class GlobalExceptionHandler extends RuntimeException {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiError> handleOtherError(Exception exception) {
+        log.error("未处理的异常", exception);
         return ResponseEntity
                 .internalServerError()
                 .body(new ApiError("服务器内部错误", 500));

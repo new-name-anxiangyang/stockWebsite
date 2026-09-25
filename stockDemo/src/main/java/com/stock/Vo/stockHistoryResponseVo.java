@@ -1,5 +1,6 @@
 package com.stock.Vo;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
 
 public record stockHistoryResponseVo(String symbol,
@@ -9,6 +10,6 @@ public record stockHistoryResponseVo(String symbol,
                                      BigDecimal closePrice,
                                      Long volume,
                                      String exchange,
-                                     String tradeDate) {
+                                     String tradeDate) implements Serializable {
 
 }
