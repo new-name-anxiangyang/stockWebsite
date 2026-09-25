@@ -27,4 +27,14 @@ public class GlobalExceptionHandler extends RuntimeException {
 
     public record ApiError(String message, int status) {
     }
+
+    /**
+     * 增加400状态码处理
+     * @param exception
+     * @return
+     */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiError> handIllegalArgument(IllegalArgumentException exception){
+        return ResponseEntity.badRequest().body(new ApiError(exception.getMessage(),400));
+    }
 }

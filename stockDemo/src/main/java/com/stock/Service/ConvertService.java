@@ -7,6 +7,7 @@ import com.stock.Dto.stockDto;
 import com.stock.Vo.stockHistoryResponseVo;
 import com.stock.Entity.StockDailyPrice;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -51,7 +52,6 @@ public class ConvertService {
 //                        .build())
 //                .retrieve().body(dtoResponseVo.class);
 //    }
-
     /**
      * 新增将返回的json数据添加进表单并保存到mysql
      * @param symbols
@@ -132,6 +132,7 @@ public class ConvertService {
      * @param symbol
      * @return
      */
+    @Cacheable(value = "stockHistory",key = "#symbol + ':' + #page + ':' + #size")//开启缓存，保存在redis键值对：stockHistory:股票名:开始页:结束页
     public Page<stockHistoryResponseVo> findStockHistory(String symbol, int page, int size) {
         PageRequest request = PageRequest.of(page, size);
         Page<StockDailyPrice> stockPage = repository
@@ -151,7 +152,6 @@ public class ConvertService {
                 price.getTradeDate()
         );
     }
-
     /**
      * 统一保存逻辑
      * @param response
@@ -174,7 +174,6 @@ public class ConvertService {
         }
 
     }
-
     /**
      * 刷新行情功能
      * @param symbols

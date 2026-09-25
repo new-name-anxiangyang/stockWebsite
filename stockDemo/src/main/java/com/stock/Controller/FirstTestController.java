@@ -47,6 +47,9 @@ public class FirstTestController {
             @PathVariable String symbol,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
+        if(symbol.isBlank()){throw new IllegalArgumentException("股票代码为空");}
+        else if (page < 0) {throw new IllegalArgumentException("页码不能小于0");}
+        else if (size < 1 || size > 100){throw new IllegalArgumentException("数量必须在1到100之间");}
         return convertService.findStockHistory(symbol,page,size);
     }
 
