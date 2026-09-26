@@ -302,8 +302,40 @@
 
 <body>
 
-<div class="topbar">
-    <div class="topbar-inner">
+<div id="loginPanel"
+     style="padding:24px;
+            max-width:360px;
+            margin:80px auto;
+            background:#fff;
+            border:1px solid #e4e8ef;
+            border-radius:10px;">
+
+    <h2>登录</h2>
+
+    <input id="usernameInput"
+           value="admin"
+           placeholder="用户名"
+           style="width:100%;padding:10px;margin:8px 0;">
+
+    <input id="passwordInput"
+           type="password"
+           value="123"
+           placeholder="密码"
+           style="width:100%;padding:10px;margin:8px 0;">
+
+    <button class="primary"
+            style="width:100%;"
+            onclick="login()">
+        登录
+    </button>
+
+    <div id="loginMessage"
+         style="margin-top:10px;color:#dc2626;">
+    </div>
+</div>
+
+<div id="appPanel" style="display:none;">
+    <div class="topbar">
         <h1>股票行情查询</h1>
         <div class="search-box">
             <input
@@ -317,8 +349,6 @@
             <button class="primary" id="searchBtn" onclick="searchStock()">查询</button>
         </div>
     </div>
-</div>
-
 <div class="container">
 
     <div id="result">请输入股票代码后查询</div>
@@ -354,7 +384,7 @@
     </div>
 
 </div>
-
+</div>
 <script>
     let chartInstance = null;
 
@@ -400,7 +430,7 @@
         setStatus("正在查询...");
 
         try {
-            const response = await fetch(`/api/stocks/${symbol}`);
+            const response = await authFetch(`/api/stocks/${symbol}`);
 
             if (!response.ok) {
                 throw new Error(`请求失败，状态码：${response.status}`);
@@ -452,7 +482,7 @@
         setStatus("正在刷新行情...");
 
         try {
-            const response = await fetch(`/api/stocks/${symbol}/refresh`, { method: "POST" });
+            const response = await authFetch(`/api/stocks/${symbol}/refresh`, { method: "POST" });
 
             if (!response.ok) {
                 throw new Error(`刷新失败，状态码：${response.status}`);
@@ -649,6 +679,104 @@
         if (!date) return "";
         return date.substring(0, 10);
     }
+    const TOKEN_KEY = "accessToken";
+
+    function getToken() {
+        return sessionStorage.getItem(TOKEN_KEY);
+    }
+
+    function saveToken(token) {
+        sessionStorage.setItem(TOKEN_KEY, token);
+    }
+
+    function clearToken() {
+        sessionStorage.removeItem(TOKEN_KEY);
+    }
+
+    async function authFetch(url, options = {}) {
+        const token = getToken();
+
+        if (!token) {
+            document.getElementById("loginPanel").style.display = "block";
+            document.getElementById("appPanel").style.display = "none";
+            throw new Error("请先登录");
+        }
+
+        const headers = new Headers(options.headers || {});
+        headers.set("Authorization", `Bearer ${token}`);
+
+        const response = await fetch(url, {
+            ...options,
+            headers
+        });
+
+        if (response.status === 401) {
+            clearToken();
+            document.getElementById("loginPanel").style.display = "block";
+            document.getElementById("appPanel").style.display = "none";
+            throw new Error("登录已过期，请重新登录");
+        }
+
+        return response;
+    }
+
+    async function login() {
+        const username =
+            document.getElementById("usernameInput").value.trim();
+
+        const password =
+            document.getElementById("passwordInput").value;
+
+        const message =
+            document.getElementById("loginMessage");
+
+        if (!username || !password) {
+            message.textContent = "请输入用户名和密码";
+            return;
+        }
+
+        try {
+            const response = await fetch("/api/auth/login", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    username: username,
+                    password: password
+                })
+            });
+
+            if (!response.ok) {
+                message.textContent =
+                    `登录失败，状态码：${response.status}`;
+                return;
+            }
+
+            const data = await response.json();
+
+            saveToken(data.accessToken);
+
+            document.getElementById("loginPanel")
+                .style.display = "none";
+
+            document.getElementById("appPanel")
+                .style.display = "block";
+
+            setStatus("登录成功，请查询股票", "success");
+
+        } catch (error) {
+            message.textContent =
+                `登录请求失败：${error.message}`;
+        }
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+        if (getToken()) {
+            document.getElementById("loginPanel").style.display = "none";
+            document.getElementById("appPanel").style.display = "block";
+        }
+    });
 
     function formatNumber(value) {
         if (value === null || value === undefined) return "";

@@ -1,0 +1,13 @@
+spring:
+  application:
+    name: auth-service
+  config:
+    import: nacos:auth-service.yml?group=DEFAULT_GROUP&refreshEnabled=true
+  cloud:
+    nacos:
+      server-addr: 127.0.0.1:8848
+      discovery:
+        namespace: dev
+      config:
+        namespace: dev
+        file-extension: yml

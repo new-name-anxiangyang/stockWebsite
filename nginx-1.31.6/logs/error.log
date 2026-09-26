@@ -47,3 +47,4 @@
 2026/09/26 17:51:31 [notice] 23860#13104: signal process started
 2026/09/26 17:54:25 [notice] 28096#31356: signal process started
 2026/09/26 17:54:25 [error] 28096#31356: OpenEvent("Global\ngx_reload_27788") failed (5: Access is denied)
+2026/09/26 23:51:31 [error] 30604#22172: *25 CreateFile() "D:\Documents\JavaProject\stockWebsite\nginx-1.31.6/html/favicon.ico" failed (2: The system cannot find the file specified), client: 127.0.0.1, server: localhost, request: "GET /favicon.ico HTTP/1.1", host: "localhost", referrer: "http://localhost/"
