@@ -8,139 +8,330 @@
     <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
 
     <style>
+        :root {
+            --bg: #f3f5f9;
+            --surface: #ffffff;
+            --border: #e4e8ef;
+            --ink: #17203a;
+            --ink-soft: #5b6478;
+            --accent: #1e4fbf;
+            --accent-soft: #eaf0ff;
+            --teal: #0e7c7b;
+            --up: #dc2626;
+            --down: #16a34a;
+            --radius: 10px;
+            --mono: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace;
+            --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+            "Microsoft YaHei", Roboto, sans-serif;
+        }
+
         * {
             box-sizing: border-box;
         }
 
+        html {
+            scroll-padding-top: 72px;
+        }
+
         body {
             margin: 0;
-            padding: 30px;
-            background: #f5f6fa;
-            font-family: Arial, sans-serif;
-            color: #222;
+            background: var(--bg);
+            font-family: var(--sans);
+            color: var(--ink);
+            -webkit-font-smoothing: antialiased;
         }
 
         .container {
             max-width: 1200px;
             margin: 0 auto;
+            padding: 0 24px 40px;
+        }
+
+        /* ---------- sticky header ---------- */
+        .topbar {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            background: rgba(243, 245, 249, 0.92);
+            backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 24px;
+        }
+
+        .topbar-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            flex-wrap: wrap;
         }
 
         h1 {
-            margin-bottom: 20px;
+            margin: 0;
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+            white-space: nowrap;
         }
 
         .search-box {
             display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
+            gap: 8px;
+            flex: 1;
+            justify-content: flex-end;
+            min-width: 280px;
         }
 
         #symbolInput {
-            width: 220px;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            font-size: 16px;
+            width: 180px;
+            padding: 9px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 15px;
             text-transform: uppercase;
+            background: var(--surface);
+            color: var(--ink);
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+
+        #symbolInput:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-soft);
         }
 
         button {
-            padding: 10px 24px;
-            border: none;
-            border-radius: 4px;
-            background: #1677ff;
-            color: white;
-            font-size: 16px;
+            padding: 9px 18px;
+            border: 1px solid transparent;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
             cursor: pointer;
+            transition: background 0.15s, opacity 0.15s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
         }
 
-        button:hover {
-            background: #0958d9;
+        button:focus-visible,
+        #symbolInput:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
         }
 
+        button.primary {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        button.primary:hover {
+            background: #163d97;
+        }
+
+        button.ghost {
+            background: var(--surface);
+            color: var(--ink);
+            border-color: var(--border);
+        }
+
+        button.ghost:hover {
+            background: #f7f8fb;
+        }
+
+        button:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+
+        .spinner {
+            width: 13px;
+            height: 13px;
+            border: 2px solid rgba(255, 255, 255, 0.4);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+
+        .ghost .spinner {
+            border-color: rgba(23, 32, 58, 0.25);
+            border-top-color: var(--ink);
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* ---------- status line ---------- */
         #result {
-            margin-bottom: 15px;
-            color: #666;
+            margin: 16px 0 0;
+            font-size: 14px;
+            color: var(--ink-soft);
         }
 
+        #result.error {
+            color: var(--up);
+        }
+
+        #result.success {
+            color: var(--down);
+        }
+
+        /* ---------- stat cards ---------- */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+            margin: 20px 0;
+        }
+
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 14px 16px;
+        }
+
+        .stat-label {
+            font-size: 12.5px;
+            color: var(--ink-soft);
+            margin-bottom: 6px;
+        }
+
+        .stat-value {
+            font-family: var(--mono);
+            font-size: 19px;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .stat-value.up { color: var(--up); }
+        .stat-value.down { color: var(--down); }
+
+        /* ---------- cards ---------- */
         .chart-box,
         .table-box {
             padding: 20px;
             margin-bottom: 20px;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+        }
+
+        .card-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--ink-soft);
+            margin: 0 0 12px;
         }
 
         #klineChart {
             width: 100%;
-            height: 500px;
+            height: 460px;
         }
 
         .table-wrapper {
             overflow-x: auto;
+            max-height: 520px;
+            overflow-y: auto;
+            border-radius: 8px;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            text-align: center;
+            font-variant-numeric: tabular-nums;
         }
 
-        th,
-        td {
-            padding: 12px;
-            border-bottom: 1px solid #eee;
+        th, td {
+            padding: 11px 14px;
+            border-bottom: 1px solid var(--border);
             white-space: nowrap;
+            text-align: right;
+            font-size: 14px;
+        }
+
+        th:first-child, td:first-child,
+        th:nth-child(2), td:nth-child(2) {
+            text-align: left;
         }
 
         th {
-            background: #fafafa;
+            position: sticky;
+            top: 0;
+            background: #fafbfd;
+            color: var(--ink-soft);
+            font-weight: 600;
+            font-size: 12.5px;
+            z-index: 1;
         }
 
-        tr:hover {
-            background: #f5f5f5;
+        td {
+            font-family: var(--mono);
+            font-size: 13.5px;
         }
 
-        .up {
-            color: #e53935;
+        td:first-child, td:nth-child(2) {
+            font-family: var(--sans);
+            font-size: 14px;
         }
 
-        .down {
-            color: #16a34a;
+        tbody tr:hover {
+            background: #f7f9fc;
+        }
+
+        .up { color: var(--up); }
+        .down { color: var(--down); }
+
+        .empty-state {
+            padding: 40px 20px;
+            text-align: center;
+            color: var(--ink-soft);
+            font-size: 14px;
+        }
+
+        @media (max-width: 640px) {
+            .topbar-inner { flex-direction: column; align-items: stretch; }
+            .search-box { justify-content: stretch; }
+            #symbolInput { flex: 1; width: auto; }
+            .container { padding: 0 16px 32px; }
         }
     </style>
 </head>
 
 <body>
+
+<div class="topbar">
+    <div class="topbar-inner">
+        <h1>股票行情查询</h1>
+        <div class="search-box">
+            <input
+                    id="symbolInput"
+                    type="text"
+                    value="AAPL"
+                    placeholder="请输入股票代码"
+                    autocomplete="off"
+            >
+            <button class="ghost" id="refreshBtn" onclick="refreshStock()">刷新行情</button>
+            <button class="primary" id="searchBtn" onclick="searchStock()">查询</button>
+        </div>
+    </div>
+</div>
+
 <div class="container">
 
-    <h1>股票行情查询</h1>
+    <div id="result">请输入股票代码后查询</div>
 
-    <div class="search-box">
-        <input
-                id="symbolInput"
-                type="text"
-                value="AAPL"
-                placeholder="请输入股票代码"
-        >
-        <button onclick="refreshStock()">
-            刷新行情
-        </button>
-        <button onclick="searchStock()">
-            查询
-        </button>
-    </div>
-
-    <div id="result">
-        请输入股票代码后查询
-    </div>
+    <div id="statsGrid" class="stats-grid" style="display:none;"></div>
 
     <div class="chart-box">
+        <p class="card-title">K 线图</p>
         <div id="klineChart"></div>
     </div>
 
     <div class="table-box">
+        <p class="card-title">历史行情</p>
         <div class="table-wrapper">
             <table>
                 <thead>
@@ -155,7 +346,9 @@
                 </tr>
                 </thead>
 
-                <tbody id="stockTableBody"></tbody>
+                <tbody id="stockTableBody">
+                <tr><td colspan="7" class="empty-state">暂无数据，查询一个股票代码开始</td></tr>
+                </tbody>
             </table>
         </div>
     </div>
@@ -163,67 +356,148 @@
 </div>
 
 <script>
-    async function searchStock() {
-        const input = document.getElementById("symbolInput");
-        const result = document.getElementById("result");
-        const tableBody = document.getElementById("stockTableBody");
+    let chartInstance = null;
 
+    function setLoading(isLoading, btn) {
+        [document.getElementById("searchBtn"), document.getElementById("refreshBtn")].forEach(b => {
+            b.disabled = isLoading;
+        });
+        if (btn) {
+            btn.dataset.originalText = btn.dataset.originalText || btn.textContent;
+            btn.innerHTML = isLoading
+                ? `<span class="spinner"></span>${btn.dataset.originalText}中...`
+                : btn.dataset.originalText;
+        }
+    }
+
+    function setStatus(text, kind) {
+        const result = document.getElementById("result");
+        result.textContent = text;
+        result.className = kind || "";
+    }
+
+    // Backend data can contain placeholder rows (all OHLC = 0 / missing),
+    // which would otherwise render as a candle spiking to zero on the chart.
+    function sanitize(data) {
+        return data.filter(row => {
+            const vals = [row.openPrice, row.highPrice, row.lowPrice, row.closePrice]
+                .map(v => Number(v || 0));
+            return vals.some(v => v > 0);
+        });
+    }
+
+    async function searchStock() {
+        const btn = document.getElementById("searchBtn");
+        const input = document.getElementById("symbolInput");
         const symbol = input.value.trim().toUpperCase();
 
         if (!symbol) {
-            result.textContent = "请输入股票代码";
+            setStatus("请输入股票代码", "error");
             return;
         }
 
-        try {
-            result.textContent = "正在查询...";
-            tableBody.innerHTML = "";
+        setLoading(true, btn);
+        setStatus("正在查询...");
 
+        try {
             const response = await fetch(`/api/stocks/${symbol}`);
 
             if (!response.ok) {
                 throw new Error(`请求失败，状态码：${response.status}`);
             }
 
-            const stockData = await response.json();
+            const rawData = await response.json();
 
-            if (stockData.length === 0) {
-                result.textContent = "没有查询到股票数据";
+            if (rawData.length === 0) {
+                setStatus("没有查询到股票数据", "error");
+                renderTable([]);
                 clearChart();
+                hideStats();
                 return;
             }
 
+            const stockData = sanitize(rawData);
+            const skipped = rawData.length - stockData.length;
+
             renderTable(stockData);
             renderKline(stockData);
+            renderStats(stockData);
 
-            result.textContent =
-                `查询成功：${symbol}，共 ${stockData.length} 条数据`;
+            setStatus(
+                `查询成功：${symbol}，共 ${stockData.length} 条数据` +
+                (skipped ? `（已过滤 ${skipped} 条异常数据）` : ""),
+                "success"
+            );
 
         } catch (error) {
-            result.textContent = `查询失败：${error.message}`;
-            tableBody.innerHTML = "";
+            setStatus(`查询失败：${error.message}`, "error");
+            renderTable([]);
             clearChart();
+            hideStats();
+        } finally {
+            setLoading(false, btn);
+        }
+    }
+
+    async function refreshStock() {
+        const btn = document.getElementById("refreshBtn");
+        const symbol = document.getElementById("symbolInput").value.trim().toUpperCase();
+
+        if (!symbol) {
+            setStatus("请输入股票代码", "error");
+            return;
+        }
+
+        setLoading(true, btn);
+        setStatus("正在刷新行情...");
+
+        try {
+            const response = await fetch(`/api/stocks/${symbol}/refresh`, { method: "POST" });
+
+            if (!response.ok) {
+                throw new Error(`刷新失败，状态码：${response.status}`);
+            }
+
+            const rawData = await response.json();
+            const stockData = sanitize(rawData);
+            const skipped = rawData.length - stockData.length;
+
+            renderTable(stockData);
+            renderKline(stockData);
+            renderStats(stockData);
+
+            setStatus(
+                `刷新成功：${symbol}，共 ${stockData.length} 条数据` +
+                (skipped ? `（已过滤 ${skipped} 条异常数据）` : ""),
+                "success"
+            );
+
+        } catch (error) {
+            setStatus(`刷新失败：${error.message}`, "error");
+        } finally {
+            setLoading(false, btn);
         }
     }
 
     function renderTable(data) {
         const tableBody = document.getElementById("stockTableBody");
-
         tableBody.innerHTML = "";
 
-        data.forEach(stock => {
-            const row = document.createElement("tr");
+        if (data.length === 0) {
+            tableBody.innerHTML = `<tr><td colspan="7" class="empty-state">暂无数据</td></tr>`;
+            return;
+        }
 
+        const sorted = [...data].sort((a, b) => new Date(b.tradeDate) - new Date(a.tradeDate));
+
+        sorted.forEach(stock => {
+            const row = document.createElement("tr");
             const open = Number(stock.openPrice || 0);
             const close = Number(stock.closePrice || 0);
 
             let closeClass = "";
-
-            if (close > open) {
-                closeClass = "up";
-            } else if (close < open) {
-                closeClass = "down";
-            }
+            if (close > open) closeClass = "up";
+            else if (close < open) closeClass = "down";
 
             row.innerHTML = `
                 <td>${formatDate(stock.tradeDate)}</td>
@@ -231,28 +505,80 @@
                 <td>${formatNumber(stock.openPrice)}</td>
                 <td>${formatNumber(stock.highPrice)}</td>
                 <td>${formatNumber(stock.lowPrice)}</td>
-                <td class="${closeClass}">
-                    ${formatNumber(stock.closePrice)}
-                </td>
+                <td class="${closeClass}">${formatNumber(stock.closePrice)}</td>
                 <td>${formatNumber(stock.volume)}</td>
             `;
-
             tableBody.appendChild(row);
         });
     }
 
+    function renderStats(data) {
+        const grid = document.getElementById("statsGrid");
+
+        if (data.length === 0) {
+            hideStats();
+            return;
+        }
+
+        const sorted = [...data].sort((a, b) => new Date(a.tradeDate) - new Date(b.tradeDate));
+        const latest = sorted[sorted.length - 1];
+        const prev = sorted.length > 1 ? sorted[sorted.length - 2] : null;
+
+        const latestClose = Number(latest.closePrice || 0);
+        const change = prev ? latestClose - Number(prev.closePrice || 0) : 0;
+        const changePct = prev && Number(prev.closePrice) ? (change / Number(prev.closePrice)) * 100 : 0;
+        const changeClass = change > 0 ? "up" : change < 0 ? "down" : "";
+        const sign = change > 0 ? "+" : "";
+
+        const periodHigh = Math.max(...sorted.map(d => Number(d.highPrice || 0)));
+        const periodLow = Math.min(...sorted.map(d => Number(d.lowPrice || 0)).filter(v => v > 0));
+
+        grid.innerHTML = `
+            <div class="stat-card">
+                <div class="stat-label">最新收盘</div>
+                <div class="stat-value">${formatNumber(latestClose)}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">涨跌额</div>
+                <div class="stat-value ${changeClass}">${sign}${formatNumber(change)}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">涨跌幅</div>
+                <div class="stat-value ${changeClass}">${sign}${changePct.toFixed(2)}%</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">区间最高</div>
+                <div class="stat-value">${formatNumber(periodHigh)}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">区间最低</div>
+                <div class="stat-value">${formatNumber(periodLow)}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">最新成交量</div>
+                <div class="stat-value">${formatNumber(latest.volume)}</div>
+            </div>
+        `;
+        grid.style.display = "grid";
+    }
+
+    function hideStats() {
+        document.getElementById("statsGrid").style.display = "none";
+    }
+
     function renderKline(data) {
         const chartElement = document.getElementById("klineChart");
-        const chart = echarts.init(chartElement);
+        if (!chartInstance) {
+            chartInstance = echarts.init(chartElement);
+        }
 
-        const sortedData = [...data].sort(
-            (a, b) => new Date(a.tradeDate) - new Date(b.tradeDate)
-        );
+        if (data.length === 0) {
+            chartInstance.clear();
+            return;
+        }
 
-        const dates = sortedData.map(item =>
-            formatDate(item.tradeDate)
-        );
-
+        const sortedData = [...data].sort((a, b) => new Date(a.tradeDate) - new Date(b.tradeDate));
+        const dates = sortedData.map(item => formatDate(item.tradeDate));
         const values = sortedData.map(item => [
             Number(item.openPrice || 0),
             Number(item.closePrice || 0),
@@ -260,53 +586,41 @@
             Number(item.highPrice || 0)
         ]);
 
-        chart.setOption({
+        chartInstance.setOption({
             animation: true,
-
-            title: {
-                text: "股票 K 线图",
-                left: "center"
-            },
+            textStyle: { fontFamily: "-apple-system, 'Segoe UI', 'PingFang SC', sans-serif" },
 
             tooltip: {
                 trigger: "axis",
-                axisPointer: {
-                    type: "cross"
-                }
+                axisPointer: { type: "cross" }
             },
 
             grid: {
-                left: "8%",
-                right: "5%",
-                top: "15%",
-                bottom: "15%"
+                left: "6%",
+                right: "3%",
+                top: "4%",
+                bottom: "18%"
             },
 
             xAxis: {
                 type: "category",
                 data: dates,
-                boundaryGap: true
+                boundaryGap: true,
+                axisLine: { lineStyle: { color: "#e4e8ef" } },
+                axisLabel: { color: "#5b6478" }
             },
 
             yAxis: {
                 type: "value",
                 scale: true,
-                splitArea: {
-                    show: true
-                }
+                splitArea: { show: false },
+                splitLine: { lineStyle: { color: "#eef0f4" } },
+                axisLabel: { color: "#5b6478" }
             },
 
             dataZoom: [
-                {
-                    type: "inside",
-                    start: 0,
-                    end: 100
-                },
-                {
-                    type: "slider",
-                    start: 0,
-                    end: 100
-                }
+                { type: "inside", start: 60, end: 100 },
+                { type: "slider", start: 60, end: 100, height: 20 }
             ],
 
             series: [
@@ -315,105 +629,37 @@
                     type: "candlestick",
                     data: values,
                     itemStyle: {
-                        color: "#ef4444",
+                        color: "#dc2626",
                         color0: "#16a34a",
-                        borderColor: "#ef4444",
+                        borderColor: "#dc2626",
                         borderColor0: "#16a34a"
                     }
                 }
             ]
-        });
+        }, true);
 
-        window.addEventListener("resize", () => {
-            chart.resize();
-        });
+        window.addEventListener("resize", () => chartInstance && chartInstance.resize());
     }
 
     function clearChart() {
-        const chartElement = document.getElementById("klineChart");
-        const chart = echarts.getInstanceByDom(chartElement);
-
-        if (chart) {
-            chart.clear();
-        }
+        if (chartInstance) chartInstance.clear();
     }
 
     function formatDate(date) {
-        if (!date) {
-            return "";
-        }
-
+        if (!date) return "";
         return date.substring(0, 10);
     }
 
     function formatNumber(value) {
-        if (value === null || value === undefined) {
-            return "";
-        }
-
+        if (value === null || value === undefined) return "";
         const number = Number(value);
-
-        if (Number.isNaN(number)) {
-            return value;
-        }
-
-        return number.toLocaleString("en-US", {
-            maximumFractionDigits: 4
-        });
+        if (Number.isNaN(number)) return value;
+        return number.toLocaleString("en-US", { maximumFractionDigits: 4 });
     }
 
-    async function refreshStock() {
-        const symbol = document
-            .getElementById("symbolInput")
-            .value
-            .trim()
-            .toUpperCase();
-
-        const result = document.getElementById("result");
-
-        if (!symbol) {
-            result.textContent = "请输入股票代码";
-            return;
-        }
-
-        try {
-            result.textContent = "正在刷新行情...";
-
-            const response = await fetch(
-                `/api/stocks/${symbol}/refresh`,
-                {
-                    method: "POST"
-                }
-            );
-
-            if (!response.ok) {
-                throw new Error(
-                    `刷新失败，状态码：${response.status}`
-                );
-            }
-
-            const stockData = await response.json();
-
-            renderTable(stockData);
-            renderKline(stockData);
-
-            result.textContent =
-                `刷新成功：${symbol}，共 ${stockData.length} 条数据`;
-
-        } catch (error) {
-            result.textContent =
-                `刷新失败：${error.message}`;
-        }
-    }
-
-    document
-        .getElementById("symbolInput")
-        .addEventListener("keydown", event => {
-            if (event.key === "Enter") {
-                searchStock();
-            }
-        });
+    document.getElementById("symbolInput").addEventListener("keydown", event => {
+        if (event.key === "Enter") searchStock();
+    });
 </script>
 </body>
 </html>
-```

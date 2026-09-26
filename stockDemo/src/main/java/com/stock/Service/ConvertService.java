@@ -180,7 +180,7 @@ public class ConvertService {
      * @param symbols
      * @return
      */
-    @CacheEvict(value = "stockHistory",allEntries = true)
+    @CacheEvict(value = "stockHistory",allEntries = true)//实现刷新操作后删除原有旧缓存
     public List<stockHistoryResponseVo> refreshStock(String symbols){
         dtoResponseVo dtoResponseVo = fetchFromMarketstack(symbols);
         saveNewData(dtoResponseVo);
