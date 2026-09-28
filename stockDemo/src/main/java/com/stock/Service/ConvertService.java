@@ -133,12 +133,12 @@ public class ConvertService {
      * @param symbol
      * @return
      */
-    @Cacheable(value = "stockHistory",key = "#symbol + ':' + #page + ':' + #size")//开启缓存，保存在redis键值对：stockHistory:股票名:开始页:结束页
-    public Page<stockHistoryResponseVo> findStockHistory(String symbol, int page, int size) {
+    @Cacheable(value = "stockHistory",key = "#symbol.toUpperCase() + ':' + #page + ':' + #size")//开启缓存，保存在redis键值对：stockHistory:股票名:开始页:结束页
+    public List<stockHistoryResponseVo> findStockHistory(String symbol, int page, int size) {
         PageRequest request = PageRequest.of(page, size);
         Page<StockDailyPrice> stockPage = repository
                 .findBySymbolOrderByTradeDateAsc(symbol,request);
-        return stockPage.map(this::convertToResponse);
+        return stockPage.map(this::convertToResponse).getContent();
     }
     private stockHistoryResponseVo convertToResponse(
             StockDailyPrice price) {

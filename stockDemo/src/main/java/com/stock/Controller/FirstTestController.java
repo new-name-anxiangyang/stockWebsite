@@ -4,7 +4,6 @@ import com.stock.Service.ConvertService;
 import com.stock.Entity.StockDailyPrice;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -43,7 +42,7 @@ public class FirstTestController {
     }
 
     @GetMapping("/history/{symbol}")
-    public Page<stockHistoryResponseVo> getStockHistory(
+    public List<stockHistoryResponseVo> getStockHistory(
             @PathVariable String symbol,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
