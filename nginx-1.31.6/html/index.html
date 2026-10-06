@@ -42,7 +42,7 @@
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1440px;
             margin: 0 auto;
             padding: 0 24px 40px;
         }
@@ -59,7 +59,7 @@
         }
 
         .topbar-inner {
-            max-width: 1200px;
+            max-width: 1440px;
             margin: 0 auto;
             display: flex;
             align-items: center;
@@ -178,6 +178,123 @@
             color: var(--down);
         }
 
+        .workspace {
+            display: grid;
+            grid-template-columns: minmax(0, 1.55fr) minmax(320px, 1fr);
+            align-items: start;
+            gap: 20px;
+        }
+
+        .stock-panel {
+            min-width: 0;
+        }
+
+        .agent-panel {
+            position: sticky;
+            top: 88px;
+            height: calc(100vh - 112px);
+            min-height: 560px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+        }
+
+        .agent-header {
+            padding: 18px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .agent-header h2 {
+            margin: 0 0 4px;
+            font-size: 17px;
+        }
+
+        .agent-header p {
+            margin: 0;
+            color: var(--ink-soft);
+            font-size: 13px;
+        }
+
+        .agent-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 18px;
+        }
+
+        .agent-message {
+            display: flex;
+            margin-bottom: 14px;
+        }
+
+        .agent-message.user {
+            justify-content: flex-end;
+        }
+
+        .agent-bubble {
+            max-width: 88%;
+            padding: 10px 13px;
+            border-radius: 11px;
+            line-height: 1.65;
+            white-space: pre-wrap;
+            word-break: break-word;
+            font-size: 14px;
+        }
+
+        .agent-message.user .agent-bubble {
+            background: var(--accent-soft);
+            border-bottom-right-radius: 3px;
+        }
+
+        .agent-message.agent .agent-bubble {
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-bottom-left-radius: 3px;
+        }
+
+        .agent-composer {
+            display: flex;
+            gap: 8px;
+            padding: 14px;
+            border-top: 1px solid var(--border);
+        }
+
+        #messageInput {
+            min-width: 0;
+            min-height: 44px;
+            max-height: 120px;
+            flex: 1;
+            resize: vertical;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font: inherit;
+            outline: none;
+        }
+
+        #messageInput:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-soft);
+        }
+
+        #sendButton {
+            align-self: stretch;
+            padding: 9px 14px;
+        }
+
+        .agent-status {
+            min-height: 18px;
+            padding: 0 14px 10px;
+            color: var(--ink-soft);
+            font-size: 12px;
+        }
+
+        .agent-status.error {
+            color: var(--up);
+        }
+
         /* ---------- stat cards ---------- */
         .stats-grid {
             display: grid;
@@ -292,6 +409,16 @@
         }
 
         @media (max-width: 640px) {
+            .workspace {
+                grid-template-columns: 1fr;
+            }
+
+            .agent-panel {
+                position: static;
+                height: 620px;
+                min-height: 0;
+            }
+
             .topbar-inner { flex-direction: column; align-items: stretch; }
             .search-box { justify-content: stretch; }
             #symbolInput { flex: 1; width: auto; }
@@ -349,7 +476,8 @@
             <button class="primary" id="searchBtn" onclick="searchStock()">查询</button>
         </div>
     </div>
-<div class="container">
+<div class="workspace container">
+    <main class="stock-panel">
 
     <div id="result">请输入股票代码后查询</div>
 
@@ -382,6 +510,32 @@
             </table>
         </div>
     </div>
+
+    </main>
+
+    <aside class="agent-panel">
+        <div class="agent-header">
+            <h2>股票智能 Agent</h2>
+            <p>可以询问行情、市场信息或股票分析问题</p>
+        </div>
+
+        <div id="messages" class="agent-messages">
+            <div class="agent-message agent">
+                <div class="agent-bubble">
+                    你好，我是股票智能 Agent。你可以询问股票行情、市场信息或股票分析问题。
+                </div>
+            </div>
+        </div>
+
+        <div class="agent-composer">
+            <textarea
+                    id="messageInput"
+                    placeholder="例如：帮我分析一下 AAPL"
+            ></textarea>
+            <button id="sendButton" class="primary" onclick="sendMessage()">发送</button>
+        </div>
+        <div id="agentStatus" class="agent-status"></div>
+    </aside>
 
 </div>
 </div>
@@ -693,6 +847,87 @@
         sessionStorage.removeItem(TOKEN_KEY);
     }
 
+    let conversationId = sessionStorage.getItem("agentConversationId");
+
+    function addAgentMessage(type, content) {
+        const messages = document.getElementById("messages");
+        const wrapper = document.createElement("div");
+        wrapper.className = `agent-message ${type}`;
+
+        const bubble = document.createElement("div");
+        bubble.className = "agent-bubble";
+        bubble.textContent = content;
+
+        wrapper.appendChild(bubble);
+        messages.appendChild(wrapper);
+        messages.scrollTop = messages.scrollHeight;
+        return bubble;
+    }
+
+    function setAgentStatus(text, isError = false) {
+        const status = document.getElementById("agentStatus");
+        status.textContent = text;
+        status.className = isError ? "agent-status error" : "agent-status";
+    }
+
+    async function sendMessage() {
+        const input = document.getElementById("messageInput");
+        const button = document.getElementById("sendButton");
+        const message = input.value.trim();
+
+        if (!message) {
+            setAgentStatus("请输入问题", true);
+            return;
+        }
+
+        const token = getToken();
+        if (!token) {
+            setAgentStatus("请先登录系统", true);
+            return;
+        }
+
+        addAgentMessage("user", message);
+        input.value = "";
+        button.disabled = true;
+        setAgentStatus("Agent 正在思考……");
+        const agentBubble = addAgentMessage("agent", "正在生成回答……");
+
+        try {
+            const response = await fetch("/api/agent/chat", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    message,
+                    conversation_id: conversationId
+                })
+            });
+
+            if (response.status === 401) {
+                clearToken();
+                throw new Error("登录已过期，请重新登录");
+            }
+
+            if (!response.ok) {
+                throw new Error(`请求失败，状态码：${response.status}`);
+            }
+
+            const data = await response.json();
+            conversationId = data.conversation_id;
+            sessionStorage.setItem("agentConversationId", conversationId);
+            agentBubble.textContent = data.answer;
+            setAgentStatus(`回答模式：${data.mode}`);
+        } catch (error) {
+            agentBubble.textContent = `请求失败：${error.message}`;
+            setAgentStatus(error.message, true);
+        } finally {
+            button.disabled = false;
+            input.focus();
+        }
+    }
+
     async function authFetch(url, options = {}) {
         const token = getToken();
 
@@ -787,6 +1022,13 @@
 
     document.getElementById("symbolInput").addEventListener("keydown", event => {
         if (event.key === "Enter") searchStock();
+    });
+
+    document.getElementById("messageInput").addEventListener("keydown", event => {
+        if (event.key === "Enter" && !event.shiftKey) {
+            event.preventDefault();
+            sendMessage();
+        }
     });
 </script>
 </body>
