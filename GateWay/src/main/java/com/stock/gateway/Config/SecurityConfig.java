@@ -23,7 +23,7 @@ public class SecurityConfig {
                                         "/actuator/health"
                                 )
                                 .permitAll()
-                                .pathMatchers("/stocks/**")
+                                .pathMatchers("/stocks/**","/agent/**")
                                 .authenticated()
                                 .anyExchange()
                                 .denyAll()
