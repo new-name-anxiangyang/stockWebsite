@@ -8,5 +8,4 @@ checkpointer = AsyncRedisSaver(settings.redis_url)
 
 
 async def init_checkpointer() -> None:
-    """创建 RediSearch 索引（幂等，已存在则跳过）。应在应用启动时调用。"""
     await checkpointer.asetup()
