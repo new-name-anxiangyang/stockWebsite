@@ -17,6 +17,8 @@ class Settings(BaseSettings):
 
     tavily_api_key: str = ""#Agent的Web Search / 网络搜索能力。
 
+    redis_url: str = "redis://localhost:6379"
+
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env",#路径拼接，避免硬编码
         env_file_encoding="utf-8",#.env 文件使用UTF-8 编码读取

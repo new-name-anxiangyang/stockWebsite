@@ -1,4 +1,5 @@
 import logging
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Header
 from fastapi.middleware.cors import CORSMiddleware #允许跨域配置
@@ -6,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware #允许跨域配置
 from app.service import agent_service
 from app.config import settings
 from app.config.schemas import ChatRequest, ChatResponse
+from app.memory.redisCheckpoint import init_checkpointer
 
 logging.basicConfig(
     level=logging.INFO,
@@ -13,9 +15,16 @@ logging.basicConfig(
 )
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await init_checkpointer()
+    yield
+
+
 app = FastAPI(
     title="Stock Agent Service",
     version="0.2.0",
+    lifespan=lifespan,
 )
 
 

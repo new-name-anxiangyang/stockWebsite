@@ -9,13 +9,15 @@ import httpx
 from langchain_core.tools import tool#把一个普通 Python 函数转换成 LangChain Agent 可以理解和调用的 Tool。
 
 from app.config import settings
+from app.memory.redisCheckpoint import checkpointer
 
 logger = logging.getLogger("agent_service")#添加日志
 
 
 class AgentService:  #定义Agent业务服务对象
     def __init__(self) -> None:
-        self.model = self._build_model() #新建对象属性，
+        self.model = self._build_model() #新建对象属性
+        self.conversations = {}
 
         if self.model is not None:
             logger.info("LLM 模型初始化成功：%s", settings.llm_model)
@@ -161,6 +163,7 @@ class AgentService:  #定义Agent业务服务对象
             model=self.model,
             tools=tools,
             system_prompt=system_prompt,
+            checkpointer=checkpointer
         )
 
     async def chat( #对外暴露方法
@@ -186,14 +189,8 @@ class AgentService:  #定义Agent业务服务对象
             return answer, conversation_id, "mock"
 
         result = await agent.ainvoke( #ainvoke异步响应，让llm自行决定是否使用tools
-            {
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": message,
-                    }
-                ]
-            }
+            {"messages": [{"role": "user","content": message,}]},
+                  config = {"configurable":{"thread_id":conversation_id}}
         )
 
         answer = self._extract_answer(result)
