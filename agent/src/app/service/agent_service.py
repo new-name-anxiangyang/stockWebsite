@@ -17,7 +17,6 @@ logger = logging.getLogger("agent_service")#添加日志
 class AgentService:  #定义Agent业务服务对象
     def __init__(self) -> None:
         self.model = self._build_model() #新建对象属性
-        self.conversations = {}
 
         if self.model is not None:
             logger.info("LLM 模型初始化成功：%s", settings.llm_model)
