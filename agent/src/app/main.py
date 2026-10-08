@@ -1,7 +1,7 @@
 import logging
 
 from fastapi import FastAPI, Header
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.cors import CORSMiddleware #允许跨域配置
 
 from app.service import agent_service
 from app.config import settings
@@ -19,12 +19,12 @@ app = FastAPI(
 )
 
 
-app.add_middleware(
+app.add_middleware( #添加 CORS 中间件
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=["*"], #允许所有前端
+    allow_credentials=False, #不允许浏览器携带的cookie
+    allow_methods=["*"], #允许所有的http方法
+    allow_headers=["*"], #允许所有请求头
 )
 
 

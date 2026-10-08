@@ -1,4 +1,4 @@
-from __future__ import annotations
+from __future__ import annotations#Python 推迟处理类型注解
 
 import json
 import logging
@@ -6,23 +6,23 @@ import re
 from uuid import uuid4
 
 import httpx
-from langchain_core.tools import tool
+from langchain_core.tools import tool#把一个普通 Python 函数转换成 LangChain Agent 可以理解和调用的 Tool。
 
 from app.config import settings
 
-logger = logging.getLogger("agent_service")
+logger = logging.getLogger("agent_service")#添加日志
 
 
-class AgentService:
+class AgentService:  #定义Agent业务服务对象
     def __init__(self) -> None:
-        self.model = self._build_model()
+        self.model = self._build_model() #新建对象属性，
 
         if self.model is not None:
             logger.info("LLM 模型初始化成功：%s", settings.llm_model)
         else:
             logger.warning("未配置 LLM_API_KEY，Agent 进入 Mock 模式")
 
-    def _build_model(self):
+    def _build_model(self): #私有化方法
         """
         创建大模型。
 
@@ -35,29 +35,29 @@ class AgentService:
         try:
             from langchain_openai import ChatOpenAI
 
-            return ChatOpenAI(
+            return ChatOpenAI( #创建模型客户端
                 api_key=settings.llm_api_key,
                 base_url=settings.llm_base_url,
                 model=settings.llm_model,
-                temperature=0.2,
+                temperature=0.2, #控制模型输出的随机性
             )
 
-        except Exception as exc:
+        except Exception as exc: #捕获异常命名为exc，将其处理后抛给异常
             logger.error("大模型初始化失败，将使用 Mock 模式：%s", exc)
             return None
 
     def _build_tools(self, authorization: str | None):
-        tools = []
+        tools = [] #根据当前请求的用户身份，构建 Agent 可以使用的 Tool 列表。
 
         if authorization:
-            tools.append(self._build_stock_tool(authorization))
+            tools.append(self._build_stock_tool(authorization)) #根据传入的权限决定是否可以使用tools
 
         if settings.tavily_api_key:
             from langchain_tavily import TavilySearch
 
             tavily_tool = TavilySearch(
-                max_results=5,
-                topic="news",
+                max_results=5, #返回5条搜索结果
+                topic="news", #搜索偏向新闻
                 tavily_api_key=settings.tavily_api_key,
             )
 
@@ -65,9 +65,9 @@ class AgentService:
 
         return tools
 
-    @staticmethod
+    @staticmethod #不需要访问self
     def _build_stock_tool(authorization: str):
-        @tool
+        @tool #定义工具类并形成闭包
         async def query_stock(symbol: str) -> str:
             """
             查询股票历史行情。
@@ -76,19 +76,19 @@ class AgentService:
             symbol: 股票代码，例如 AAPL、TSLA、MSFT。
             """
 
-            symbol = symbol.strip().upper()
+            symbol = symbol.strip().upper() #将传入进来的参数全部处理为大写
 
-            if not re.fullmatch(r"[A-Z0-9.-]{1,12}", symbol):
+            if not re.fullmatch(r"[A-Z0-9.-]{1,12}", symbol): #进行正则表达式输入校验
                 return "股票代码格式不正确。"
 
-            url = f"http://127.0.0.1:8082/stocks/{symbol}"
+            url = f"http://127.0.0.1:8082/stocks/{symbol}" #请求拼接股票服务
 
             headers = {
                 "Authorization": authorization,
             }
 
             try:
-                async with httpx.AsyncClient(timeout=30) as client:
+                async with httpx.AsyncClient(timeout=30) as client: #创建异步http客户端
                     response = await client.get(
                         url,
                         headers=headers,
@@ -103,21 +103,21 @@ class AgentService:
                         f"{response.status_code}"
                     )
 
-                data = response.json()
+                data = response.json() #将解析的json数据赋值给data
 
                 if not data:
                     return f"没有查询到 {symbol} 的行情数据。"
 
-                latest_data = data[-10:]
+                latest_data = data[-10:] #只取最近10条
 
-                return json.dumps(
+                return json.dumps( #将结果包装
                     {
                         "symbol": symbol,
                         "count": len(data),
                         "latest": latest_data,
                     },
-                    ensure_ascii=False,
-                    default=str,
+                    ensure_ascii=False,#正常显示中文
+                    default=str, #将无法序列化的对象转化为字符串
                 )
 
             except httpx.RequestError as exc:
@@ -157,19 +157,19 @@ class AgentService:
 - 同时涉及历史行情和实时新闻时，同时调用股票工具和 Tavily。
 """
 
-        return create_agent(
+        return create_agent( #组装agent
             model=self.model,
             tools=tools,
             system_prompt=system_prompt,
         )
 
-    async def chat(
+    async def chat( #对外暴露方法
         self,
         message: str,
         conversation_id: str | None = None,
         authorization: str | None = None,
-    ) -> tuple[str, str, str]:
-        conversation_id = conversation_id or str(uuid4())
+    ) -> tuple[str, str, str]: #这个方法最终返回三个字符串
+        conversation_id = conversation_id or str(uuid4()) #用户传入的id使用用户的，没有就生成新的uuid
 
         logger.info(
             "收到消息 conversation_id=%s length=%d has_auth=%s",
@@ -178,14 +178,14 @@ class AgentService:
             bool(authorization),
         )
 
-        agent = self._build_agent(authorization)
+        agent = self._build_agent(authorization) #调用组装好的agent
 
         if agent is None:
             logger.info("使用 Mock 模式回答 conversation_id=%s", conversation_id)
             answer = self._mock_answer(message)
             return answer, conversation_id, "mock"
 
-        result = await agent.ainvoke(
+        result = await agent.ainvoke( #ainvoke异步响应，让llm自行决定是否使用tools
             {
                 "messages": [
                     {
@@ -204,15 +204,15 @@ class AgentService:
 
     @staticmethod
     def _extract_answer(result: dict) -> str:
-        messages = result.get("messages", [])
+        messages = result.get("messages", []) #获取ai回答的信息
 
         if not messages:
             return "Agent 没有返回有效内容。"
 
-        last_message = messages[-1]
-        content = getattr(last_message, "content", "")
+        last_message = messages[-1] #去除ai回答的信息里最后一条信息，通常最后一条信息是ai回答的
+        content = getattr(last_message, "content", "")#gteattr:从对象中安全获取属性,相当于last_message.content
 
-        if isinstance(content, str):
+        if isinstance(content, str): #如果content是字符串
             return content
 
         if isinstance(content, list):
@@ -228,7 +228,7 @@ class AgentService:
 
             return "\n".join(text_parts).strip()
 
-        return str(content)
+        return str(content) #强制转成字符串
 
     @staticmethod
     def _mock_answer(message: str) -> str:
