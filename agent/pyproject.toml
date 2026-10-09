@@ -9,6 +9,14 @@ requires-python = ">=3.13"
 dependencies = [
     "fastapi>=0.142.2",
     "uvicorn>=0.54.0",
+    "pydantic",
+    "pydantic-settings",
+    "langchain>=1.4.3",
+    "langchain-openai>=1.6.7",
+    "langchain-tavily>=0.2.18",
+    "langgraph>=1.2.13",
+    "langgraph-checkpoint-redis>=0.5.2",
+    "httpx"
 ]
 
 [project.scripts]

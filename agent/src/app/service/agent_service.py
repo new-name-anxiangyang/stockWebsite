@@ -6,7 +6,10 @@ import re
 from uuid import uuid4
 
 import httpx
+from langchain.agents.middleware import HumanInTheLoopMiddleware
 from langchain_core.tools import tool#把一个普通 Python 函数转换成 LangChain Agent 可以理解和调用的 Tool。
+
+from langgraph.types import Command
 
 from app.config import settings
 from app.memory.redisCheckpoint import checkpointer
@@ -157,12 +160,27 @@ class AgentService:  #定义Agent业务服务对象
 - “什么是市盈率”可以直接回答；
 - 同时涉及历史行情和实时新闻时，同时调用股票工具和 Tavily。
 """
+        interrupt_on = {item.name: False for item in tools}
+
+        if any(item.name == "query_stock" for item in tools):
+            interrupt_on["query_stock"] = {
+                "allowed_decisions": [
+                    "approve",
+                    "edit",
+                    "reject",
+                ],
+            }
+
+        middleware = [
+            HumanInTheLoopMiddleware(interrupt_on=interrupt_on)
+        ]
 
         return create_agent( #组装agent
             model=self.model,
             tools=tools,
             system_prompt=system_prompt,
-            checkpointer=checkpointer
+            checkpointer=checkpointer,
+            middleware=middleware
         )
 
     async def chat( #对外暴露方法
@@ -189,8 +207,25 @@ class AgentService:  #定义Agent业务服务对象
 
         result = await agent.ainvoke( #ainvoke异步响应，让llm自行决定是否使用tools
             {"messages": [{"role": "user","content": message,}]},
-                  config = {"configurable":{"thread_id":conversation_id}}
+                  config = {"configurable":{"thread_id":conversation_id}},
+                  version="v2"
         )
+
+        if result.interrupts:
+            interrupt = result.interrupts[0]
+            logger.info("工具调用待审核 conversation_id=%s", conversation_id)
+
+            return (
+                json.dumps(
+                    {
+                        "status": "pending_approval",
+                        "approval_request": interrupt.value,
+                    },
+                    ensure_ascii=False,
+                ),
+                conversation_id,
+                "pending_approval",
+            )
 
         answer = self._extract_answer(result)
 
@@ -198,9 +233,57 @@ class AgentService:  #定义Agent业务服务对象
 
         return answer, conversation_id, "langchain"
 
+    async def resume(
+        self,
+        conversation_id: str,
+        decision: str,
+        message: str | None = None,
+        edited_action: dict | None = None,
+        authorization: str | None = None,
+    ) -> tuple[str, str, str]:
+        agent = self._build_agent(authorization)
+
+        if agent is None:
+            return self._mock_answer("审核恢复"), conversation_id, "mock"
+
+        decision_item: dict = {"type": decision}
+
+        if decision == "reject":
+            decision_item["message"] = message or "用户拒绝了该操作。"
+        elif decision == "respond":
+            decision_item["message"] = message or ""
+        elif decision == "edit":
+            if edited_action is None:
+                raise ValueError("edit 决策必须提供 edited_action")
+            decision_item["edited_action"] = edited_action
+
+        result = await agent.ainvoke(
+            Command(resume={"decisions": [decision_item]}),
+            config={"configurable": {"thread_id": conversation_id}},
+            version="v2",
+        )
+
+        if result.interrupts:
+            interrupt = result.interrupts[0]
+            return (
+                json.dumps(
+                    {
+                        "status": "pending_approval",
+                        "approval_request": interrupt.value,
+                    },
+                    ensure_ascii=False,
+                ),
+                conversation_id,
+                "pending_approval",
+            )
+
+        return self._extract_answer(result), conversation_id, "langchain"
+
     @staticmethod
-    def _extract_answer(result: dict) -> str:
-        messages = result.get("messages", []) #获取ai回答的信息
+    def _extract_answer(result) -> str:
+        # version="v2" 时 ainvoke 返回 GraphOutput，状态在 .value 里
+        state = getattr(result, "value", result)
+        messages = state.get("messages", []) #获取ai回答的信息
 
         if not messages:
             return "Agent 没有返回有效内容。"

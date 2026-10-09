@@ -1,3 +1,5 @@
+from typing import Any,Literal
+
 from pydantic import BaseModel, Field
 
 class ChatRequest(BaseModel):
@@ -13,6 +15,14 @@ class ChatRequest(BaseModel):
     )
 
 class ChatResponse(BaseModel):
-    answer: str
+    answer: str | None = None
     conversation_id: str
     mode: str
+    status: Literal["completed", "pending_approval", "rejected"] = "completed"
+    approval_request: dict[str, Any] | None = None
+
+class ResumeRequest(BaseModel):
+    conversation_id: str
+    decision: Literal["approve", "edit", "reject", "respond"]
+    message: str | None = None
+    edited_action: dict[str, Any] | None = None
