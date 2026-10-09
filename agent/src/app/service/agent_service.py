@@ -14,6 +14,9 @@ from langgraph.types import Command
 from app.config import settings
 from app.memory.redisCheckpoint import checkpointer
 
+#添加mcp服务
+from langchain_mcp_adapters.client import MultiServerMCPClient
+
 logger = logging.getLogger("agent_service")#添加日志
 
 
@@ -50,24 +53,28 @@ class AgentService:  #定义Agent业务服务对象
             logger.error("大模型初始化失败，将使用 Mock 模式：%s", exc)
             return None
 
-    def _build_tools(self, authorization: str | None):
-        tools = [] #根据当前请求的用户身份，构建 Agent 可以使用的 Tool 列表。
+    async def _build_tools(self, authorization: str | None):
+            tools = [] #根据当前请求的用户身份，构建 Agent 可以使用的 Tool 列表。
 
-        if authorization:
-            tools.append(self._build_stock_tool(authorization)) #根据传入的权限决定是否可以使用tools
+            if authorization:
+                tools.append(self._build_stock_tool(authorization)) #根据传入的权限决定是否可以使用tools
 
-        if settings.tavily_api_key:
-            from langchain_tavily import TavilySearch
+            if settings.tavily_api_key:
+                from langchain_tavily import TavilySearch
 
-            tavily_tool = TavilySearch(
-                max_results=5, #返回5条搜索结果
-                topic="news", #搜索偏向新闻
-                tavily_api_key=settings.tavily_api_key,
-            )
+                tavily_tool = TavilySearch(
+                    max_results=5, #返回5条搜索结果
+                    topic="news", #搜索偏向新闻
+                    tavily_api_key=settings.tavily_api_key,
+                )
 
-            tools.append(tavily_tool)
+                mcp_client = self._build_mcp_client()
+                mcp_tools = await mcp_client.get_tools()
 
-        return tools
+                tools.extend(mcp_tools)
+                tools.append(tavily_tool)
+
+            return tools
 
     @staticmethod #不需要访问self
     def _build_stock_tool(authorization: str):
@@ -129,59 +136,82 @@ class AgentService:  #定义Agent业务服务对象
 
         return query_stock
 
-    def _build_agent(self, authorization: str | None):
-        if self.model is None:
-            return None
-
-        from langchain.agents import create_agent
-
-        tools = self._build_tools(authorization)
-
-        system_prompt = """
-你是股票网站中的智能分析助手。
-
-你的职责：
-
-1. 回答用户关于股票、行情和市场信息的问题；
-2. 用户询问具体股票历史行情时，必须优先调用 query_stock 工具；
-3. 用户询问最新新闻、公司动态、政策变化或实时市场信息时，必须调用 Tavily 搜索工具；
-4. 不要把旧知识当成实时信息；
-5. 搜索结果不足时，要明确告诉用户；
-6. 回答实时信息时，尽量列出信息来源；
-7. 不要编造股票数据、新闻或来源；
-8. 对投资建议进行风险提示；
-9. 回答要简洁、清晰，并尽量使用中文。
-
-工具选择规则：
-
-- “查询 AAPL 行情”使用 query_stock；
-- “AAPL 最近有什么新闻”使用 Tavily 搜索；
-- “最近新能源板块有什么消息”使用 Tavily 搜索；
-- “什么是市盈率”可以直接回答；
-- 同时涉及历史行情和实时新闻时，同时调用股票工具和 Tavily。
-"""
-        interrupt_on = {item.name: False for item in tools}
-
-        if any(item.name == "query_stock" for item in tools):
-            interrupt_on["query_stock"] = {
-                "allowed_decisions": [
-                    "approve",
-                    "edit",
-                    "reject",
-                ],
-            }
-
-        middleware = [
-            HumanInTheLoopMiddleware(interrupt_on=interrupt_on)
-        ]
-
-        return create_agent( #组装agent
-            model=self.model,
-            tools=tools,
-            system_prompt=system_prompt,
-            checkpointer=checkpointer,
-            middleware=middleware
+    def _build_mcp_client(self) -> MultiServerMCPClient:
+        return MultiServerMCPClient(
+            {
+                "time": {
+                    "command": "uvx",
+                    "args": [
+                        "mcp-server-time",
+                        "--local-timezone=Asia/Shanghai",
+                    ],
+                    "transport": "stdio",
+                }
+            },
+            tool_name_prefix=True,
         )
+
+
+    async def _build_agent(self, authorization: str | None):
+            if self.model is None:
+                return None
+
+            from langchain.agents import create_agent
+
+            tools = await self._build_tools(authorization)
+
+            system_prompt = """
+    你是股票网站中的智能分析助手。
+    
+    你的职责：
+    
+    1. 回答用户关于股票、行情和市场信息的问题；
+    2. 用户询问具体股票历史行情时，必须优先调用 query_stock 工具；
+    3. 用户询问最新新闻、公司动态、政策变化或实时市场信息时，必须调用 Tavily 搜索工具；
+    4. 不要把旧知识当成实时信息；
+    5. 搜索结果不足时，要明确告诉用户；
+    6. 回答实时信息时，尽量列出信息来源；
+    7. 不要编造股票数据、新闻或来源；
+    8. 对投资建议进行风险提示；
+    9. 回答要简洁、清晰，并尽量使用中文。
+    时间工具使用规则：
+
+    - 用户询问当前时间、日期、星期或时区时间时，必须使用 Time MCP 工具。
+    - 用户询问两个地区之间的时间转换时，使用 convert_time。
+    - 使用 IANA 时区名称，例如 Asia/Shanghai、America/New_York、Europe/London。
+    - 不要依赖模型自身记忆推测当前时间。
+    - 如果用户没有明确时区，可以使用 Asia/Shanghai。
+    
+    工具选择规则：
+    
+    - “查询 AAPL 行情”使用 query_stock；
+    - “AAPL 最近有什么新闻”使用 Tavily 搜索；
+    - “最近新能源板块有什么消息”使用 Tavily 搜索；
+    - “什么是市盈率”可以直接回答；
+    - 同时涉及历史行情和实时新闻时，同时调用股票工具和 Tavily。
+    """
+            interrupt_on = {item.name: False for item in tools}
+
+            if any(item.name == "query_stock" for item in tools):
+                interrupt_on["query_stock"] = {
+                    "allowed_decisions": [
+                        "approve",
+                        "edit",
+                        "reject",
+                    ],
+                }
+
+            middleware = [
+                HumanInTheLoopMiddleware(interrupt_on=interrupt_on)
+            ]
+
+            return create_agent( #组装agent
+                model=self.model,
+                tools=tools,
+                system_prompt=system_prompt,
+                checkpointer=checkpointer,
+                middleware=middleware
+            )
 
     async def chat( #对外暴露方法
         self,
@@ -198,7 +228,7 @@ class AgentService:  #定义Agent业务服务对象
             bool(authorization),
         )
 
-        agent = self._build_agent(authorization) #调用组装好的agent
+        agent = await self._build_agent(authorization) #调用组装好的agent
 
         if agent is None:
             logger.info("使用 Mock 模式回答 conversation_id=%s", conversation_id)
@@ -241,7 +271,7 @@ class AgentService:  #定义Agent业务服务对象
         edited_action: dict | None = None,
         authorization: str | None = None,
     ) -> tuple[str, str, str]:
-        agent = self._build_agent(authorization)
+        agent = await self._build_agent(authorization)
 
         if agent is None:
             return self._mock_answer("审核恢复"), conversation_id, "mock"
