@@ -1,6 +1,7 @@
 # Stock Website Demo
 
-这是一个面向 Java 初学者的股票行情查询 Demo。项目从单体 Spring Boot 应用逐步演进为包含业务服务、登录鉴权服务、Gateway 网关、Nacos 和 Nginx 的简单微服务项目。
+master分支：面向 Java 初学者的股票行情查询。项目从单体 Spring Boot 应用逐步演进为包含业务服务、登录鉴权服务、Gateway 网关、Nacos 和 Nginx 的微服务项目。
+agent分支：基于langchain框架快速开发一个生产可用，可扩展的智能agent，可以再次基础上进行二次开发，详细请看agent分支Readme.md
 
 ## 1. 项目功能
 
