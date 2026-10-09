@@ -235,9 +235,28 @@ class AgentService:  #定义Agent业务服务对象
             answer = self._mock_answer(message)
             return answer, conversation_id, "mock"
 
+        config = {"configurable": {"thread_id": conversation_id}}
+
+        pending = await self._pending_interrupt(agent, config)
+
+        if pending is not None:
+            logger.info("会话存在待审核操作，保持原审核状态 conversation_id=%s", conversation_id)
+
+            return (
+                json.dumps(
+                    {
+                        "status": "pending_approval",
+                        "approval_request": pending,
+                    },
+                    ensure_ascii=False,
+                ),
+                conversation_id,
+                "pending_approval",
+            )
+
         result = await agent.ainvoke( #ainvoke异步响应，让llm自行决定是否使用tools
             {"messages": [{"role": "user","content": message,}]},
-                  config = {"configurable":{"thread_id":conversation_id}},
+                  config = config,
                   version="v2"
         )
 
@@ -262,6 +281,20 @@ class AgentService:  #定义Agent业务服务对象
         logger.info("LangChain 回答完成 conversation_id=%s", conversation_id)
 
         return answer, conversation_id, "langchain"
+
+    @staticmethod
+    async def _pending_interrupt(agent, config) -> dict | None:
+        """返回该会话待审核的中断内容；没有待审核则返回 None。"""
+        snapshot = await agent.aget_state(config)
+
+        if not snapshot.next:
+            return None
+
+        for task in snapshot.tasks:
+            for interrupt in task.interrupts:
+                return interrupt.value
+
+        return None
 
     async def resume(
         self,
