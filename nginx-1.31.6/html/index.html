@@ -295,6 +295,32 @@
             color: var(--up);
         }
 
+        .approval-action {
+            margin: 8px 0;
+            padding: 8px 10px;
+            background: #fff7ed;
+            border: 1px solid #fed7aa;
+            border-radius: 8px;
+            font-size: 13px;
+            word-break: break-all;
+        }
+
+        .approval-actions {
+            margin-top: 12px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .approval-actions button {
+            min-width: 0;
+            padding: 8px 18px;
+            font-size: 14px;
+        }
+
+        .approval-actions button.reject {
+            background: var(--up);
+        }
+
         /* ---------- stat cards ---------- */
         .stats-grid {
             display: grid;
@@ -848,6 +874,7 @@
     }
 
     let conversationId = sessionStorage.getItem("agentConversationId");
+    let approvalPending = false;
 
     function addAgentMessage(type, content) {
         const messages = document.getElementById("messages");
@@ -874,6 +901,11 @@
         const input = document.getElementById("messageInput");
         const button = document.getElementById("sendButton");
         const message = input.value.trim();
+
+        if (approvalPending) {
+            setAgentStatus("请先处理当前待审核操作");
+            return;
+        }
 
         if (!message) {
             setAgentStatus("请输入问题", true);
@@ -917,14 +949,116 @@
             const data = await response.json();
             conversationId = data.conversation_id;
             sessionStorage.setItem("agentConversationId", conversationId);
-            agentBubble.textContent = data.answer;
-            setAgentStatus(`回答模式：${data.mode}`);
+
+            if (data.status === "pending_approval") {
+                approvalPending = true;
+                renderApproval(agentBubble, data);
+                setAgentStatus("等待人工审核");
+            } else {
+                approvalPending = false;
+                agentBubble.textContent = data.answer || "";
+                setAgentStatus(`回答模式：${data.mode}`);
+            }
         } catch (error) {
             agentBubble.textContent = `请求失败：${error.message}`;
             setAgentStatus(error.message, true);
         } finally {
-            button.disabled = false;
+            button.disabled = approvalPending;
             input.focus();
+        }
+    }
+
+    function renderApproval(bubble, data) {
+        bubble.textContent = "";
+
+        const title = document.createElement("div");
+        title.textContent = "⚠️ Agent 请求执行以下操作，请确认：";
+        bubble.appendChild(title);
+
+        const actions =
+            (data.approval_request || {}).action_requests || [];
+
+        actions.forEach(action => {
+            const line = document.createElement("div");
+            line.className = "approval-action";
+            line.textContent =
+                `工具：${action.name} 参数：${JSON.stringify(action.args || {})}`;
+            bubble.appendChild(line);
+        });
+
+        const row = document.createElement("div");
+        row.className = "approval-actions";
+
+        const approveButton = document.createElement("button");
+        approveButton.textContent = "批准";
+        approveButton.onclick = () => resumeChat("approve", bubble, row);
+
+        const rejectButton = document.createElement("button");
+        rejectButton.textContent = "拒绝";
+        rejectButton.className = "reject";
+        rejectButton.onclick = () => resumeChat("reject", bubble, row);
+
+        row.appendChild(approveButton);
+        row.appendChild(rejectButton);
+        bubble.appendChild(row);
+
+        const messages = document.getElementById("messages");
+        messages.scrollTop = messages.scrollHeight;
+    }
+
+    async function resumeChat(decision, bubble, actionRow) {
+        const token = getToken();
+        const button = document.getElementById("sendButton");
+
+        if (!token) {
+            setAgentStatus("请先登录系统", true);
+            return;
+        }
+
+        actionRow.remove();
+        button.disabled = true;
+        setAgentStatus("正在提交审核结果……");
+
+        try {
+            const response = await fetch("/api/agent/chat/resume", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    conversation_id: conversationId,
+                    decision
+                })
+            });
+
+            if (response.status === 401) {
+                clearToken();
+                throw new Error("登录已过期，请重新登录");
+            }
+
+            if (!response.ok) {
+                throw new Error(`请求失败，状态码：${response.status}`);
+            }
+
+            const data = await response.json();
+
+            if (data.status === "pending_approval") {
+                approvalPending = true;
+                renderApproval(bubble, data);
+                setAgentStatus("仍需人工审核");
+                return;
+            }
+
+            approvalPending = false;
+            bubble.textContent = data.answer || "";
+            setAgentStatus(`回答模式：${data.mode}`);
+        } catch (error) {
+            approvalPending = false;
+            bubble.textContent = `请求失败：${error.message}`;
+            setAgentStatus(error.message, true);
+        } finally {
+            button.disabled = approvalPending;
         }
     }
 

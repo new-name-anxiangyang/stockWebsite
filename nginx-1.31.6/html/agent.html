@@ -163,6 +163,32 @@
             color: var(--danger);
         }
 
+        .approval-action {
+            margin: 8px 0;
+            padding: 8px 10px;
+            background: #fff7ed;
+            border: 1px solid #fed7aa;
+            border-radius: 8px;
+            font-size: 13px;
+            word-break: break-all;
+        }
+
+        .approval-actions {
+            margin-top: 12px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .approval-actions button {
+            min-width: 0;
+            padding: 8px 18px;
+            font-size: 14px;
+        }
+
+        .approval-actions button.reject {
+            background: var(--danger);
+        }
+
         @media (max-width: 640px) {
             .page {
                 width: calc(100% - 20px);
@@ -308,8 +334,13 @@
                 conversationId
             );
 
-            agentBubble.textContent = data.answer;
-            setStatus(`回答模式：${data.mode}`);
+            if (data.status === "pending_approval") {
+                renderApproval(agentBubble, data);
+                setStatus("等待审核");
+            } else {
+                agentBubble.textContent = data.answer;
+                setStatus(`回答模式：${data.mode}`);
+            }
 
         } catch (error) {
             agentBubble.textContent = `请求失败：${error.message}`;
@@ -317,6 +348,94 @@
         } finally {
             button.disabled = false;
             input.focus();
+        }
+    }
+
+    function renderApproval(bubble, data) {
+        bubble.textContent = "";
+
+        const title = document.createElement("div");
+        title.textContent = "⚠️ Agent 请求执行以下操作，请确认：";
+        bubble.appendChild(title);
+
+        const actions =
+            (data.approval_request || {}).action_requests || [];
+
+        actions.forEach(action => {
+            const line = document.createElement("div");
+            line.className = "approval-action";
+            line.textContent =
+                `工具：${action.name}　参数：${JSON.stringify(action.args || {})}`;
+            bubble.appendChild(line);
+        });
+
+        const row = document.createElement("div");
+        row.className = "approval-actions";
+
+        const approveBtn = document.createElement("button");
+        approveBtn.textContent = "批准";
+        approveBtn.onclick = () => resumeChat("approve", bubble, row);
+
+        const rejectBtn = document.createElement("button");
+        rejectBtn.textContent = "拒绝";
+        rejectBtn.className = "reject";
+        rejectBtn.onclick = () => resumeChat("reject", bubble, row);
+
+        row.appendChild(approveBtn);
+        row.appendChild(rejectBtn);
+        bubble.appendChild(row);
+
+        const messages = document.getElementById("messages");
+        messages.scrollTop = messages.scrollHeight;
+    }
+
+    async function resumeChat(decision, bubble, actionRow) {
+        const token = getToken();
+
+        if (!token) {
+            setStatus("请先登录系统", true);
+            return;
+        }
+
+        actionRow.remove();
+        setStatus("正在提交审核结果……");
+
+        try {
+            const response = await fetch("/api/agent/chat/resume", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    conversation_id: conversationId,
+                    decision: decision
+                })
+            });
+
+            if (response.status === 401) {
+                sessionStorage.removeItem(TOKEN_KEY);
+                throw new Error("登录已过期，请重新登录");
+            }
+
+            if (!response.ok) {
+                throw new Error(`请求失败，状态码：${response.status}`);
+            }
+
+            const data = await response.json();
+
+            if (data.status === "pending_approval") {
+                renderApproval(bubble, data);
+                setStatus("仍需审核");
+                return;
+            }
+
+            bubble.textContent = data.answer;
+            setStatus(`回答模式：${data.mode}`);
+
+        } catch (error) {
+            bubble.textContent = `请求失败：${error.message}`;
+            setStatus(error.message, true);
         }
     }
 
