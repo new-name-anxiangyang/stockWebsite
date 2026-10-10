@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     llm_model: str = "deepseek-chat"#使用哪个模型
 
     tavily_api_key: str = ""#Agent的Web Search / 网络搜索能力。
+    mineru_api_key: str= ""
 
     redis_url: str = "redis://localhost:6379"
 

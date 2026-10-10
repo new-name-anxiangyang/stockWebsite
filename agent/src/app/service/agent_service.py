@@ -11,6 +11,7 @@ from langchain_core.tools import tool#把一个普通 Python 函数转换成 Lan
 
 from langgraph.types import Command
 
+from app.RAG.vector_store import get_vector_store
 from app.config import settings
 from app.memory.redisCheckpoint import checkpointer
 
@@ -58,6 +59,7 @@ class AgentService:  #定义Agent业务服务对象
 
             if authorization:
                 tools.append(self._build_stock_tool(authorization)) #根据传入的权限决定是否可以使用tools
+                tools.append(self._build_knowledge_tool(authorization))
 
             if settings.tavily_api_key:
                 from langchain_tavily import TavilySearch
@@ -151,6 +153,29 @@ class AgentService:  #定义Agent业务服务对象
             tool_name_prefix=True,
         )
 
+    def _build_knowledge_tool(self):
+        @tool
+        async def search_knowledge(query: str) -> str:
+            """
+            查询股票知识库和已上传文档。
+
+            query: 用户想查询的知识内容。
+            """
+            documents = await get_vector_store().asimilarity_search(
+                query,
+                k=5,
+            )
+
+            if not documents:
+                return "知识库中没有找到相关内容。"
+
+            return "\n\n".join(
+                document.page_content
+                for document in documents
+            )
+
+        return search_knowledge
+
 
     async def _build_agent(self, authorization: str | None):
             if self.model is None:
@@ -189,6 +214,13 @@ class AgentService:  #定义Agent业务服务对象
     - “最近新能源板块有什么消息”使用 Tavily 搜索；
     - “什么是市盈率”可以直接回答；
     - 同时涉及历史行情和实时新闻时，同时调用股票工具和 Tavily。
+    知识库工具使用规则：
+
+    - 用户询问已上传文档、公司资料、研究报告或内部知识时，优先调用 search_knowledge；
+    - 如果知识库没有相关内容，不要编造答案；
+    - 股票实时行情仍然使用 query_stock；
+    - 最新新闻仍然使用 Tavily；
+    - 当前时间仍然使用 Time MCP。
     """
             interrupt_on = {item.name: False for item in tools}
 

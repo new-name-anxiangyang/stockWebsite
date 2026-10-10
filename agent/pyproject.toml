@@ -18,16 +18,25 @@ dependencies = [
     "langgraph-checkpoint-redis>=0.5.2",
     "langchain-mcp-adapters",
     "mcp-server-time",
-    "httpx"
+    "httpx",
+    "mineru>=4.0,<5",
+    "langchain-text-splitters",
+    "langchain-huggingface",
+    "sentence-transformers",
+    "langchain-milvus",
+    "pymilvus"
 ]
 
 [project.scripts]
-agent-service = "agent_service:main"
+agent-service = "app.main:main"
 
 [[tool.uv.index]]
-url = "https://mirrors.aliyun.com/pypi/simple/"
+url = "https://pypi.org/simple/"
 default = true
 
 [build-system]
 requires = ["uv_build>=0.12.22,<0.13.0"]
 build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "app"

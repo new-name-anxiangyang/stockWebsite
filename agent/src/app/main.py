@@ -28,6 +28,16 @@ app = FastAPI(
 )
 
 
+def main() -> None:
+    import uvicorn
+
+    uvicorn.run(
+        "app.main:app",
+        host=settings.app_host,
+        port=settings.app_port,
+    )
+
+
 app.add_middleware( #添加 CORS 中间件
     CORSMiddleware,
     allow_origins=["*"], #允许所有前端
